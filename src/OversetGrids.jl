@@ -6,14 +6,18 @@ struct ComponentMesh{D}
     z_order::Int
 end
 
-function create_componenets(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGrid})
+function create_componenets(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGrid}; centroids=true)
     meshes = Dict{Int, ComponentMesh}() 
     zs = determine_z_order(grids...)
     for (z, grid) in zs
-        meshes[z] = ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z)
+        if centroids
+            meshes[z] = ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z)
+        else
+            meshes[z] = ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z)
+        end
     end
 
-    slicer!(meshes)
+    slicer!(meshes, centroids)
 
     return meshes
 end
@@ -132,7 +136,7 @@ function create_boundary_polygon(cartesian_indices, x_array, y_array)
     return [polygon1, polygon2, polygon3, polygon4]
 end
 
-function slicer!(meshes::Dict{Int, ComponentMesh}; overlap_cell_num=5)
+function slicer!(meshes::Dict{Int, ComponentMesh}, centroids; overlap_cell_num=5)
     for i in eachindex(collect(keys(meshes)))
         for j in i+1:length(meshes)
             # Mesh i should be cutting mesh j, meaning we need to find the CartesianIndices where mesh j will change
@@ -144,7 +148,11 @@ function slicer!(meshes::Dict{Int, ComponentMesh}; overlap_cell_num=5)
             mi_cartinds = CartesianIndices((1:size(x_mi)[1], 1:size(x_mi)[2]))
             boundary_polygon = create_boundary_polygon(mi_cartinds, x_mi, y_mi)
 
-            x_mj, y_mj = CurvilinearGrids.coords(grid_j)
+            if centroids
+                x_mj, y_mj = CurvilinearGrids.centroids(grid_j)
+            else
+                x_mj, y_mj = CurvilinearGrids.coords(grid_j)
+            end
 
             # Need to find a bounding box for the combined grids
             largest_x = max(maximum(x_mi), maximum(x_mj))
@@ -283,7 +291,7 @@ function mark_interpolation_cells!(meshes::Dict{Int, ComponentMesh}, num_interp_
     end
 end
 
-function save_vtk_with_threshold(mesh, blank, fn)
+function save_vtk_with_threshold(mesh, blank, fn; centroids=true)
     @info "Writing to $fn.vti"
 
     xyz_n = CurvilinearGrids.coords(mesh)
@@ -314,6 +322,10 @@ function save_vtk_with_threshold(mesh, blank, fn)
             mesh.cell_center_metrics.x₂.ξ[domain], mesh.cell_center_metrics.x₂.η[domain]
         )
               
-        vtk["blank", VTKPointData()] = blank
+        if centroids
+            vtk["blank", VTKCellData()] = blank
+        else
+            vtk["blank", VTKPointData()] = blank
+        end
     end
 end
