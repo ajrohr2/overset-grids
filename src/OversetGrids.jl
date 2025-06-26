@@ -38,85 +38,7 @@ function determine_z_order(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGri
     return zs
 end
 
-# function slicer(meshes::Dict{Int, ComponentMesh}; overlap_cell_num=5)
-#     for i in eachindex(collect(keys(meshes)))
-#         for j in i+1:length(meshes)
-#             # Mesh i should be cutting mesh j, meaning we need to find the CartesianIndices where mesh j will change
-#             overlap = []
-# 
-#             grid_i = meshes[i].grid
-#             grid_j = meshes[j].grid
-#             x_mi, y_mi = CurvilinearGrids.coords(grid_i)
-#             mi_cartinds = CartesianIndices((1:size(x_mi)[1], 1:size(x_mi)[2]))
-#             mi_boundary = vcat(mi_cartinds[1,:], mi_cartinds[:,1], mi_cartinds[size(x_mi)[1],:], mi_cartinds[:,size(x_mi)[2]])
-#             x_mj, y_mj = CurvilinearGrids.coords(grid_j)
-# 
-#             # Here is eventually where we want to implement spiral search
-#             for c_mj in CartesianIndices((1:size(x_mj)[1], 1:size(x_mj)[2]))
-#                 # Here's the logic: The current point is marked for deletion if and only if it's x and y value are between exactly 1 x and y boundary point in the cutting grid
-#                 current_j_point = (x_mj[c_mj], y_mj[c_mj])
-# 
-#                 xis_lower = [i for i in mi_boundary if x_mi[i] ≤ current_j_point[1]]
-#                 xis_upper = [i for i in mi_boundary if x_mi[i] > current_j_point[1]]
-#                 yis_lower = [i for i in mi_boundary if y_mi[i] ≤ current_j_point[2]]
-#                 yis_upper = [i for i in mi_boundary if y_mi[i] > current_j_point[2]]
-# 
-#                 # Logic here is if the reverse of the CartesianIndex also exists, then the line projected from the selected point crosses two borders, and therefore isn't inside the mesh
-#                 quad3 = _remove_opposite_pairs(intersect(xis_lower, yis_lower), size(x_mi)[1], size(x_mi)[1])
-#                 quad1 = _remove_opposite_pairs(intersect(xis_upper, yis_upper), size(x_mi)[1], size(x_mi)[1])
-#                 quad2 = _remove_opposite_pairs(intersect(xis_lower, yis_upper), size(x_mi)[1], size(x_mi)[1])
-#                 quad4 = _remove_opposite_pairs(intersect(xis_upper, yis_lower), size(x_mi)[1], size(x_mi)[1])
-# 
-#                 if quad1 && quad2 && quad3 && quad4
-#                     push!(overlap, c_mj)
-#                 end
-#             end
-# 
-#             # Update the iblank matrix
-#             for c in overlap
-#                 meshes[j].blank_mask[c] = 1
-#             end
-#         end
-#     end
-# end
-
-function _remove_opposite_pairs(idx_list::Vector, nrows::Int, ncols::Int)
-    to_remove = Set{CartesianIndex}()
-
-    for idx in idx_list
-        i, j = Tuple(idx)
-        # Skip if already marked for removal
-        if idx in to_remove
-            continue
-        end
-
-        # Determine the opposite index
-        if i == 1
-            opposite = CartesianIndex(nrows, j)
-        elseif i == nrows
-            opposite = CartesianIndex(1, j)
-        elseif j == 1
-            opposite = CartesianIndex(i, ncols)
-        elseif j == ncols
-            opposite = CartesianIndex(i, 1)
-        else
-            continue  # not on the boundary
-        end
-
-        # If the opposite is in the list, mark both for removal
-        if opposite in idx_list
-            push!(to_remove, idx)
-            push!(to_remove, opposite)
-        end
-    end
-
-    # Remove marked indices from the original list (in-place)
-    filter!(x -> x ∉ to_remove, idx_list)
-
-    return length(idx_list) == 0 ? false : true
-end
-
-# --- Test of orientation and ray intersection based overlap detection --- #
+# --- Orientation and ray intersection based overlap detection --- #
 struct Line
     point_0::Tuple
     point_1::Tuple
@@ -139,21 +61,28 @@ function determine_intersection(l1::Line, l2::Line)
     oCDA = orientation(l2.point_0, l2.point_1, l1.point_0)
     oCDB = orientation(l2.point_0, l2.point_1, l1.point_1)
 
-    # This means some points are collinear
+    # Maybe if all the points are colinear, then we shouldn't count it as an intersection (rays that run along a boundary don't cross the boundary)
+
+    if oABC == oABD == oCDA == oCDB == 0 
+        # Ray runs along boundary
+        return false
+    end
+
+    # This means some points are colinear
     if oABC == 0 
-        if l1.point_0[1] ≤ l2.point_0[1] ≤ l1.point_1[1]
+        if l1.point_0[1] ≤ l2.point_0[1] ≤ l1.point_1[1] && l1.point_0[2] ≤ l2.point_0[2] ≤ l1.point_1[2]
             return true
         end
     elseif oABD == 0 
-        if l1.point_0[1] ≤ l2.point_1[1] ≤ l1.point_1[1]
+        if l1.point_0[1] ≤ l2.point_1[1] ≤ l1.point_1[1] && l1.point_0[2] ≤ l2.point_1[2] ≤ l1.point_1[2]
             return true
         end
     elseif oCDA == 0 
-        if l2.point_0[1] ≤ l1.point_0[1] ≤ l2.point_1[1]
+        if l2.point_0[1] ≤ l1.point_0[1] ≤ l2.point_1[1] && l2.point_0[2] ≤ l1.point_0[2] ≤ l2.point_1[2]
             return true
         end
     elseif oCDB == 0 
-        if l2.point_0[1] ≤ l1.point_1[1] ≤ l2.point_1[1]
+        if l2.point_0[1] ≤ l1.point_1[1] ≤ l2.point_1[1] && l2.point_0[2] ≤ l1.point_1[2] ≤ l2.point_1[2]
             return true
         end
     end
@@ -165,12 +94,13 @@ function determine_intersection(l1::Line, l2::Line)
     end
 end
 
-function create_rays(point::CartesianIndex, x_array, y_array)
+function create_rays(point::CartesianIndex, x_array, y_array, bottom_corner, top_corner)
+    # We need the rays to exist in the largest global space
     rays = []
-    push!(rays, Line((x_array[1, point[2]], y_array[1, point[2]]), (x_array[point], y_array[point])))
-    push!(rays, Line((x_array[point], y_array[point]), (x_array[end, point[2]], y_array[end, point[2]])))
-    push!(rays, Line((x_array[point[1], 1], y_array[point[1], 1]), (x_array[point], y_array[point])))
-    push!(rays, Line((x_array[point], y_array[point]), (x_array[point[1], end], y_array[point[1], end])))
+    push!(rays, Line((bottom_corner[1], y_array[1, point[2]]), (x_array[point], y_array[point])))
+    push!(rays, Line((x_array[point], y_array[point]), (top_corner[1], y_array[end, point[2]])))
+    push!(rays, Line((x_array[point[1], 1], bottom_corner[2]), (x_array[point], y_array[point])))
+    push!(rays, Line((x_array[point], y_array[point]), (x_array[point[1], end], top_corner[2])))
 
     return rays
 end
@@ -212,13 +142,19 @@ function slicer(meshes::Dict{Int, ComponentMesh}; overlap_cell_num=5)
             grid_j = meshes[j].grid
             x_mi, y_mi = CurvilinearGrids.coords(grid_i)
             mi_cartinds = CartesianIndices((1:size(x_mi)[1], 1:size(x_mi)[2]))
-            # mi_boundary = vcat(mi_cartinds[1,:], mi_cartinds[:,1], mi_cartinds[size(x_mi)[1],:], mi_cartinds[:,size(x_mi)[2]])
             boundary_polygon = create_boundary_polygon(mi_cartinds, x_mi, y_mi)
             x_mj, y_mj = CurvilinearGrids.coords(grid_j)
 
+            # Need to find a bounding box for the combined grids
+            largest_x = max(maximum(x_mi), maximum(x_mj))
+            smallest_x = min(minimum(x_mi), minimum(x_mj))
+            
+            largest_y = max(maximum(y_mi), maximum(y_mj))
+            smallest_y = min(minimum(y_mi), minimum(y_mj))
+
             # Here is eventually where we want to implement spiral search
             for c_mj in CartesianIndices((1:size(x_mj)[1], 1:size(x_mj)[2]))
-                rays = create_rays(c_mj, x_mj, y_mj)
+                rays = create_rays(c_mj, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
                 intersection_list = []
 
                 for l in eachindex(rays)
@@ -227,7 +163,7 @@ function slicer(meshes::Dict{Int, ComponentMesh}; overlap_cell_num=5)
                         for segment in boundary_polygon[k]
                             if determine_intersection(rays[l], segment)
                                 intersection_list[l] += 1
-                                println("Ray $(rays[l]) intersected line $segment ")
+                                # println("Ray $(rays[l]) intersected line $segment ")
                             end
                         end
                     end
@@ -244,5 +180,40 @@ function slicer(meshes::Dict{Int, ComponentMesh}; overlap_cell_num=5)
                 meshes[j].blank_mask[c] = 1
             end
         end
+    end
+end
+
+function save_vtk_with_threshold(mesh, blank, fn)
+    @info "Writing to $fn.vti"
+
+    xyz_n = CurvilinearGrids.coords(mesh)
+    domain = mesh.iterators.cell.domain
+
+    @views vtk_grid(fn, xyz_n) do vtk
+        vtk["J", VTKCellData()] = mesh.cell_center_metrics.J[domain]
+
+        # vtk["volume", VTKCellData()] = CurvilinearGrids.cellvolume.(Ref(mesh), domain)
+
+        vtk["xi", VTKCellData(), component_names=["x1", "x2", "t"]] = (
+            mesh.cell_center_metrics.ξ.x₁[domain],
+            mesh.cell_center_metrics.ξ.x₂[domain],
+            mesh.cell_center_metrics.ξ.t[domain],
+        )
+
+        vtk["eta", VTKCellData(), component_names=["x1", "x2", "t"]] = (
+            mesh.cell_center_metrics.η.x₁[domain],
+            mesh.cell_center_metrics.η.x₂[domain],
+            mesh.cell_center_metrics.η.t[domain],
+        )
+
+        vtk["dx_di", VTKCellData(), component_names=["xi", "eta"]] = (
+            mesh.cell_center_metrics.x₁.ξ[domain], mesh.cell_center_metrics.x₁.η[domain]
+        )
+
+        vtk["dy_di", VTKCellData(), component_names=["xi", "eta"]] = (
+            mesh.cell_center_metrics.x₂.ξ[domain], mesh.cell_center_metrics.x₂.η[domain]
+        )
+              
+        vtk["blank", VTKPointData()] = blank
     end
 end
