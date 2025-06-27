@@ -200,6 +200,7 @@ end
 # Function to remove interiors of sliced meshes. The idea is if you wrap meshes around an object, the background mesh doesn't need to simulate the area the object takes up. So we mark it for deletion.
 
 function slice_interior!(meshes::Dict{Int, ComponentMesh})
+    # Update to use rays rather than array slices
     for mesh in values(meshes)
         for point in CartesianIndices(mesh.blank_mask)
             if mesh.blank_mask[point] == 0 
@@ -254,7 +255,7 @@ function mark_interpolation_cells!(meshes::Dict{Int, ComponentMesh}, num_interp_
         end
         for _ in 1:num_interp_cells-1
             interp_points = []
-            for point in CartesianIndices(mesh.blank_mask)[2:end-1, 2:end-1]
+            for point in CartesianIndices(mesh.blank_mask)[1:end, 1:end]
                 if mesh.blank_mask[point] == 1 
                     neighbors = []
                     try
