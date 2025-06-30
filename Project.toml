@@ -1,4 +1,12 @@
+name = "OversetGrids"
+uuid = "1359cae2-b97f-4282-875e-8e6ebcd83298"
+authors = ["Aiden Rohrbach <arohrbachj@protonmail.com>"]
+version = "0.1.0"
+
 [deps]
-CartesianDomains = "31d3d393-e656-4614-8ab7-f376885a6db2"
 CurvilinearGrids = "58b19789-dd19-4aa2-839c-c763a7b10301"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
+
+[compat]
+CurvilinearGrids = "0.8.1"
+WriteVTK = "1.21.2"

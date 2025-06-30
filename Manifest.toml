@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "38136f673639f7e358fe98783403d320f483d219"
+project_hash = "efd505ff8bab3545d19a2460c2877940a966fa0d"
 
 [[deps.Accessors]]
 deps = ["CompositionsBase", "ConstructionBase", "Dates", "InverseFunctions", "MacroTools"]
@@ -123,9 +123,9 @@ version = "0.2.1"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra"]
-git-tree-sha1 = "1713c74e00545bfe14605d2a2be1712de8fbcb58"
+git-tree-sha1 = "06ee8d1aa558d2833aa799f6f0b31b30cada405f"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.25.1"
+version = "1.25.2"
 weakdeps = ["SparseArrays"]
 
     [deps.ChainRulesCore.extensions]
@@ -211,11 +211,11 @@ version = "0.3.1"
 
 [[deps.CurvilinearGrids]]
 deps = ["Adapt", "CartesianDomains", "ChunkSplitters", "FillArrays", "FiniteDifferences", "ForwardDiff", "Interpolations", "KernelAbstractions", "LinearAlgebra", "MappedArrays", "OffsetArrays", "Polyester", "Roots", "StaticArrays", "StructArrays", "UnPack", "Unitful", "WriteVTK"]
-git-tree-sha1 = "89c970336eeaec5578be8ffa306a0d51fa9465b4"
+git-tree-sha1 = "5a2dfff0696f9fc344993658036bf7f454d4528a"
 repo-rev = "main"
 repo-url = "https://github.com/smillerc/CurvilinearGrids.jl.git"
 uuid = "58b19789-dd19-4aa2-839c-c763a7b10301"
-version = "0.8.0-DEV"
+version = "0.8.1"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
@@ -515,9 +515,9 @@ version = "1.4.2"
 
 [[deps.Roots]]
 deps = ["Accessors", "CommonSolve", "Printf"]
-git-tree-sha1 = "3ac13765751ffc81e3531223782d9512f6023f71"
+git-tree-sha1 = "668e411c0616a70860249b4c96e5d35296631a1d"
 uuid = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
-version = "2.2.7"
+version = "2.2.8"
 
     [deps.Roots.extensions]
     RootsChainRulesCoreExt = "ChainRulesCore"
