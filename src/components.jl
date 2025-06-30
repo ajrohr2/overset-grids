@@ -90,11 +90,11 @@ function determine_z_order(resolution_type, grids::Vararg{CurvilinearGrids.Abstr
     order = Dict() 
     for grid in grids
         if resolution_type == :min
-            m = minimum(grid.cell_center_metrics.J[grid.iterators.cell.domain])
+            m = trunc(minimum(grid.cell_center_metrics.J[grid.iterators.cell.domain]), digits=12)
         elseif resolution_type == :avg 
-            m = sum(grid.cell_center_metrics.J[grid.iterators.cell.domain]) / length(grid.cell_center_metrics.J[grid.iterators.cell.domain])
+            m = trunc(sum(grid.cell_center_metrics.J[grid.iterators.cell.domain]) / length(grid.cell_center_metrics.J[grid.iterators.cell.domain]), digits=12)
         elseif resolution_type == :max
-            m = maximum(grid.cell_center_metrics.J[grid.iterators.cell.domain])
+            m = trunc(maximum(grid.cell_center_metrics.J[grid.iterators.cell.domain]), digits=12)
         else 
             error("Unknown resolution function $(resolution_type).")
         end
