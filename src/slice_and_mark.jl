@@ -1,61 +1,61 @@
 function slicer!(meshes::Dict{Int, Vector{ComponentMesh}}, centroids)
-    for i in eachindex(collect(keys(meshes)))
+    rays = Vector{Line}(undef, 4)
+    intersection_list = zeros(Int16, 4)
+
+    @inbounds for i in keys(meshes)
         for mesh_i in meshes[i]
-            for mesh_j in vcat([meshes[j] for j in i+1:length(meshes)]...)
-                # Mesh i should be cutting mesh j, meaning we need to find the CartesianIndices where mesh j will change
-                overlap = []
+            @inbounds for j in (i+1):length(meshes)
+                for mesh_j in meshes[j]
+                    # Mesh i should be cutting mesh j, meaning we need to find the CartesianIndices where mesh j will change
+                    grid_j = mesh_j.grid 
 
-                grid_i = mesh_i.grid 
-                grid_j = mesh_j.grid 
+                    boundary_polygon = mesh_i.boundary_polygon
 
-                x_mi, y_mi = CurvilinearGrids.coords(grid_i)
-                mi_cartinds = CartesianIndices((1:size(x_mi)[1], 1:size(x_mi)[2]))
-                boundary_polygon = create_boundary_polygon(mi_cartinds, x_mi, y_mi)
+                    if centroids
+                        x_mj, y_mj = CurvilinearGrids.centroids(grid_j)
+                    else
+                        x_mj, y_mj = CurvilinearGrids.coords(grid_j)
+                    end
 
-                if centroids
-                    x_mj, y_mj = CurvilinearGrids.centroids(grid_j)
-                else
-                    x_mj, y_mj = CurvilinearGrids.coords(grid_j)
-                end
+                    # Need to find a bounding box for the combined grids
+                    largest_x = max(mesh_i.bounding_box[2], mesh_j.bounding_box[2])
+                    smallest_x = min(mesh_i.bounding_box[1], mesh_j.bounding_box[1])
+                    
+                    largest_y = max(mesh_i.bounding_box[4], mesh_j.bounding_box[4])
+                    smallest_y = min(mesh_i.bounding_box[3], mesh_j.bounding_box[3])
 
-                # Need to find a bounding box for the combined grids
-                largest_x = max(maximum(x_mi), maximum(x_mj))
-                smallest_x = min(minimum(x_mi), minimum(x_mj))
-                
-                largest_y = max(maximum(y_mi), maximum(y_mj))
-                smallest_y = min(minimum(y_mi), minimum(y_mj))
+                    # Pre-allocate arrays
+                    overlap = Vector{CartesianIndex}(undef, length(x_mj))
+                    overlap_num = 0
 
-                # Here is eventually where we want to implement spiral search
-                for c_mj in CartesianIndices((1:size(x_mj)[1], 1:size(x_mj)[2]))
-                    rays = create_rays(c_mj, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
-                    intersection_list = []
+                    # Here is eventually where we want to implement spiral search
+                    @inbounds for c_mj in CartesianIndices((1:size(x_mj)[1], 1:size(x_mj)[2]))
+                        if x_mj[c_mj] < mesh_i.bounding_box[1] || x_mj[c_mj] > mesh_i.bounding_box[2] || y_mj[c_mj] < mesh_i.bounding_box[3] || y_mj[c_mj] > mesh_i.bounding_box[4]
+                            continue
+                        end
+                        create_rays!(c_mj, rays, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
 
-                    for l in eachindex(rays)
-                        push!(intersection_list, 0)
-
-                        for k in eachindex(boundary_polygon)
-                            for segment in boundary_polygon[k]
+                        @inbounds for l in eachindex(rays)
+                            for segment in boundary_polygon
                                 if determine_intersection(rays[l], segment)
                                     intersection_list[l] += 1
                                     # println("Ray $(rays[l]) intersected line $segment ")
                                 end
                             end
-                        end
 
-                        if intersection_list[l] % 2 == 1 
-                            push!(overlap, c_mj)
-                            break
+                            if intersection_list[l] % 2 == 1 
+                                intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = 0
+                                overlap_num += 1
+                                overlap[overlap_num] = c_mj
+                                break
+                            end
                         end
                     end
 
-                    # if !all(v -> v % 2 == 0, intersection_list)
-                    #     push!(overlap, c_mj)
-                    # end
-                end
-
-                # Update the iblank matrix
-                for c in overlap
-                    mesh_j.blank_mask[c] = 1
+                    # Update the iblank matrix
+                    @inbounds for c in 1:overlap_num
+                        mesh_j.blank_mask[overlap[c]] = 1
+                    end
                 end
             end
         end
@@ -86,72 +86,78 @@ end
 # Function to determine interpolation cells
 
 function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh}}, num_interp_cells::Int)
-    for mesh in vcat(values(meshes)...)
-        for point in CartesianIndices(mesh.blank_mask)[1:end, 1:end]
-            if mesh.blank_mask[point] == 1 
-                neighbors = []
-
-                try
-                    push!(neighbors, mesh.blank_mask[point[1]-1, point[2]])
-                catch e
-                    # pass
-                end
-                try
-                    push!(neighbors, mesh.blank_mask[point[1]+1, point[2]])
-                catch e
-                    # pass
-                end
-                try
-                    push!(neighbors, mesh.blank_mask[point[1], point[2]-1])
-                catch e
-                    # pass
-                end
-                try
-                    push!(neighbors, mesh.blank_mask[point[1], point[2]+1])
-                catch e
-                    # pass
-                end
-
-                num_surrounding_zeros = count(x -> x == 0, neighbors)
-                if num_surrounding_zeros >= 1 
-                    mesh.blank_mask[point] = -1 
-                end
-            end
-        end
-        for _ in 1:num_interp_cells-1
-            interp_points = []
-            for point in CartesianIndices(mesh.blank_mask)[1:end, 1:end]
+    neighbors = ones(Int16, 4)
+    for mesh_list in values(meshes)
+        for mesh in mesh_list
+            interp_points = Vector{CartesianIndex}(undef, length(mesh.boundary_polygon)*num_interp_cells)
+            for point in CartesianIndices(mesh.blank_mask)
                 if mesh.blank_mask[point] == 1 
-                    neighbors = []
                     try
-                        push!(neighbors, mesh.blank_mask[point[1]-1, point[2]])
+                        neighbors[1] = mesh.blank_mask[point[1]-1, point[2]]
                     catch e
                         # pass
                     end
                     try
-                        push!(neighbors, mesh.blank_mask[point[1]+1, point[2]])
+                        neighbors[2] = mesh.blank_mask[point[1]+1, point[2]]
                     catch e
                         # pass
                     end
                     try
-                        push!(neighbors, mesh.blank_mask[point[1], point[2]-1])
+                        neighbors[3] = mesh.blank_mask[point[1], point[2]-1]
                     catch e
                         # pass
                     end
                     try
-                        push!(neighbors, mesh.blank_mask[point[1], point[2]+1])
+                        neighbors[4] = mesh.blank_mask[point[1], point[2]+1]
                     catch e
                         # pass
                     end
 
-                    num_surrounding_interps = count(x -> x == -1, neighbors)
-                    if num_surrounding_interps >= 1 
-                        push!(interp_points, point)
+                    num_surrounding_zeros = count(x -> x == 0, neighbors)
+                    if num_surrounding_zeros >= 1 
+                        mesh.blank_mask[point] = -1 
                     end
+
+                    neighbors[1] = neighbors[2] = neighbors[3] = neighbors[4] = 1
                 end
             end
-            for c in interp_points
-                mesh.blank_mask[c] = -1
+            for _ in 1:num_interp_cells-1
+                num_interp_points = 0
+                for point in CartesianIndices(mesh.blank_mask)
+                    if mesh.blank_mask[point] == 1 
+                        try
+                            neighbors[1] = mesh.blank_mask[point[1]-1, point[2]]
+                        catch e
+                            # pass
+                        end
+                        try
+                            neighbors[2] = mesh.blank_mask[point[1]+1, point[2]]
+                        catch e
+                            # pass
+                        end
+                        try
+                            neighbors[3] = mesh.blank_mask[point[1], point[2]-1]
+                        catch e
+                            # pass
+                        end
+                        try
+                            neighbors[4] = mesh.blank_mask[point[1], point[2]+1]
+                        catch e
+                            # pass
+                        end
+
+                        num_surrounding_interps = count(x -> x == -1, neighbors)
+                        if num_surrounding_interps >= 1 
+                            num_interp_points += 1
+                            interp_points[num_interp_points] = point
+                        end
+
+                        neighbors[1] = neighbors[2] = neighbors[3] = neighbors[4] = 1
+                    end
+                end
+                for c in 1:num_interp_points
+                    mesh.blank_mask[interp_points[c]] = -1
+                end
             end
         end
     end

@@ -1,8 +1,16 @@
+# Helper struct for intersection detections
+struct Line
+    point_0::NTuple{2, Float64}
+    point_1::NTuple{2, Float64}
+end
+
 struct ComponentMesh{D}
     blank_mask::Array{Int8, D}
     grid::CurvilinearGrids.AbstractCurvilinearGrid
     z_order::Int
-    name::String
+    name::Union{String, Nothing}
+    bounding_box::NTuple{4, Float64}
+    boundary_polygon::Vector{Line}
 end
 
 """
@@ -25,9 +33,9 @@ function create_components(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGri
     zs = determine_z_order(resolution_type, grids...)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, "") for grid in grid_list]
+            meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
         else
-            meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z, "") for grid in grid_list]
+            meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
         end
     end
 
@@ -44,9 +52,9 @@ function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids...)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = [ComponentMesh{length(grid[1].nnodes)}(zeros(Int8, (grid[1].nnodes[1]-1, grid[1].nnodes[2]-1)), grid[1], z, grid[2]) for grid in grid_list]
+            meshes[z] = [ComponentMesh{length(grid[1].nnodes)}(zeros(Int8, (grid[1].nnodes[1]-1, grid[1].nnodes[2]-1)), grid[1], z, grid[2], get_boundary!(grid)...) for grid in grid_list]
         else
-            meshes[z] = [ComponentMesh{length(grid[1].nnodes)}(zeros(Int8, grid[1].nnodes), grid[1], z, grid[2]) for grid in grid_list]
+            meshes[z] = [ComponentMesh{length(grid[1].nnodes)}(zeros(Int8, grid[1].nnodes), grid[1], z, grid[2], get_boundary!(grid)...) for grid in grid_list]
         end
     end
 
@@ -63,15 +71,15 @@ function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilin
     for (grid, z) in grids
         if z in keys(meshes)
             if centroids
-                push!(meshes[z], ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, ""))
+                push!(meshes[z], ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...))
             else
-                push!(meshes[z], ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z, ""))
+                push!(meshes[z], ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...))
             end
         else
             if centroids
-                meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, "")]
+                meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...)]
             else
-                meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z, "")]
+                meshes[z] = [ComponentMesh{length(grid.nnodes)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...)]
             end
         end
     end
@@ -143,16 +151,16 @@ end
 
 # Check if two meshes of the same z-order overlap. If two exist, return an error.
 function check_illegal_meshes(meshes::Dict{Int, Vector{ComponentMesh}}, centroids)
+    rays = Vector{Line}(undef, 4)
+    intersection_list = zeros(Int16, 4)
+
     for (z, z_level) in meshes
         for mesh_i in z_level
             for mesh_j in setdiff(z_level, [mesh_i])
                 
-                grid_i = mesh_i.grid 
                 grid_j = mesh_j.grid 
 
-                x_mi, y_mi = CurvilinearGrids.coords(grid_i)
-                mi_cartinds = CartesianIndices((1:size(x_mi)[1], 1:size(x_mi)[2]))
-                boundary_polygon = create_boundary_polygon(mi_cartinds, x_mi, y_mi)
+                boundary_polygon = mesh_i.boundary_polygon
 
                 if centroids
                     x_mj, y_mj = CurvilinearGrids.centroids(grid_j)
@@ -161,26 +169,24 @@ function check_illegal_meshes(meshes::Dict{Int, Vector{ComponentMesh}}, centroid
                 end
 
                 # Need to find a bounding box for the combined grids
-                largest_x = max(maximum(x_mi), maximum(x_mj))
-                smallest_x = min(minimum(x_mi), minimum(x_mj))
+                largest_x = max(mesh_i.bounding_box[2], mesh_j.bounding_box[2])
+                smallest_x = min(mesh_i.bounding_box[1], mesh_j.bounding_box[1])
                 
-                largest_y = max(maximum(y_mi), maximum(y_mj))
-                smallest_y = min(minimum(y_mi), minimum(y_mj))
+                largest_y = max(mesh_i.bounding_box[4], mesh_j.bounding_box[4])
+                smallest_y = min(mesh_i.bounding_box[3], mesh_j.bounding_box[3])
 
                 # Here is eventually where we want to implement spiral search
                 for c_mj in CartesianIndices((1:size(x_mj)[1], 1:size(x_mj)[2]))
-                    rays = create_rays(c_mj, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
-                    intersection_list = []
+                    if x_mj[c_mj] < mesh_i.bounding_box[1] || x_mj[c_mj] > mesh_i.bounding_box[2] || y_mj[c_mj] < mesh_i.bounding_box[3] || y_mj[c_mj] > mesh_i.bounding_box[4]
+                        continue
+                    end
+                    create_rays!(c_mj, rays, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
 
-                    for l in eachindex(rays)
-                        push!(intersection_list, 0)
-
-                        for k in eachindex(boundary_polygon)
-                            for segment in boundary_polygon[k]
-                                if determine_intersection(rays[l], segment)
-                                    intersection_list[l] += 1
-                                    # println("Ray $(rays[l]) intersected line $segment ")
-                                end
+                    @inbounds for l in eachindex(rays)
+                        for segment in boundary_polygon
+                            if determine_intersection(rays[l], segment)
+                                intersection_list[l] += 1
+                                # println("Ray $(rays[l]) intersected line $segment ")
                             end
                         end
 
