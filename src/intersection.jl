@@ -56,11 +56,13 @@ end
 
 function create_rays(point::CartesianIndex, x_array, y_array, bottom_corner, top_corner)
     # We need the rays to exist in the largest global space
+    perturbation_x = abs(x_array[2] - x_array[1]) * ℯ / 100
+    perturbation_y = abs(y_array[2] - y_array[1]) * ℯ / 100
     rays = []
-    push!(rays, Line((bottom_corner[1], y_array[1, point[2]]), (x_array[point], y_array[point])))
-    push!(rays, Line((x_array[point], y_array[point]), (top_corner[1], y_array[end, point[2]])))
-    push!(rays, Line((x_array[point[1], 1], bottom_corner[2]), (x_array[point], y_array[point])))
-    push!(rays, Line((x_array[point], y_array[point]), (x_array[point[1], end], top_corner[2])))
+    push!(rays, Line((bottom_corner[1], y_array[1, point[2]]+perturbation_y), (x_array[point], y_array[point])))
+    push!(rays, Line((x_array[point], y_array[point]), (top_corner[1], y_array[end, point[2]]+perturbation_y)))
+    push!(rays, Line((x_array[point[1], 1]+perturbation_x, bottom_corner[2]), (x_array[point], y_array[point])))
+    push!(rays, Line((x_array[point], y_array[point]), (x_array[point[1], end]+perturbation_x, top_corner[2])))
 
     return rays
 end
