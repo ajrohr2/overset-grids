@@ -6,9 +6,15 @@ version = "0.1.0"
 [deps]
 CurvilinearGrids = "58b19789-dd19-4aa2-839c-c763a7b10301"
 FlameGraphs = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+StatProfilerHTML = "a8a75453-ed82-57c9-9e16-4cd1196ecbf5"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
 [compat]
 CurvilinearGrids = "0.8.1"
 FlameGraphs = "1.1.0"
+LinearAlgebra = "1.11.0"
+StatProfilerHTML = "1.6.0"
+StaticArrays = "1.9.13"
 WriteVTK = "1.21.2"
