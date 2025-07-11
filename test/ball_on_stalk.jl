@@ -7,6 +7,7 @@ background = RectilinearGrid2D((-1.5, -2), (1.5, 2), (100, 100), :meg6)
 
 meshes = create_components(ball, stalk_left, stalk_right, background)
 
+# @code_warntype
 slice_interior!(meshes)
 
 mark_interpolation_cells!(meshes, 4)
