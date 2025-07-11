@@ -30,16 +30,10 @@ function determine_intersection(face::Plane, ray::Ray)
     γ = (d00 * d21 - d01 * d20) * inv_denom
     α = 1 - β - γ
 
-    # area = dot(cross((face.point_1 - face.point_0), (face.point_2 - face.point_0)), face.normal) / 2 
-    # α = dot(cross((face.point_1 - point_of_intersection), (face.point_2 - point_of_intersection)), face.normal) / (2 * area)
-    # β = dot(cross((face.point_2 - point_of_intersection), (face.point_0 - point_of_intersection)), face.normal) / (2 * area)
-    # γ = 1 - α - β
-
     # If one is 1 and others are 0, then the point is a vertex. If one is 0 and the other are in (0, 1), then the point is on an edge. This may cause double intersection issues down the line
     return 0 ≤ α ≤ 1 && 0 ≤ β ≤ 1 && 0 ≤ γ ≤ 1 ? true : false
 end
 
-# norm_zeros(v::SVector{3, Float64}) = map(x -> x == 0.0 ? 0.0 : x, v)
 norm_zeros(v::SVector{3, Float64}) = SVector{3, Float64}(ifelse(v[1] == 0.0, 0.0, v[1]), ifelse(v[2] == 0.0, 0.0, v[2]), ifelse(v[3] == 0.0, 0.0, v[3]))
 function canonical_points_key(p::Plane)
     a = Tuple(norm_zeros(p.point_0))
@@ -56,7 +50,7 @@ end
 function create_boundary_planes(cartesian_indices, x, y, z)
     boundary = [cartesian_indices[1,:,:],cartesian_indices[end,:,:],cartesian_indices[:,1,:],cartesian_indices[:,end,:],cartesian_indices[:,:,1],cartesian_indices[:,:,end]]
 
-    polygon = []
+    polygon = Plane[]
 
     d = CartesianIndex(1,0)
     dr = CartesianIndex(1,1)
@@ -65,13 +59,24 @@ function create_boundary_planes(cartesian_indices, x, y, z)
     for b in boundary
         for c in CartesianIndices(b)
             if c[2] != size(CartesianIndices(b))[1] && c[1] != size(CartesianIndices(b))[1]
-                push!(polygon, Plane(SVector{3, Float64}(x[b[c]],y[b[c]],z[b[c]]),SVector{3, Float64}(x[b[c+d]],y[b[c+d]],z[b[c+d]]), SVector{3, Float64}(x[b[c+dr]],y[b[c+dr]],z[b[c+dr]])))
-                push!(polygon, Plane(SVector{3, Float64}(x[b[c]],y[b[c]],z[b[c]]),SVector{3, Float64}(x[b[c+r]],y[b[c+r]],z[b[c+r]]), SVector{3, Float64}(x[b[c+dr]],y[b[c+dr]],z[b[c+dr]])))
+                p0, p1, p2, p3 = SVector{3, Float64}(x[b[c]],y[b[c]],z[b[c]]),SVector{3, Float64}(x[b[c+d]],y[b[c+d]],z[b[c+d]]), SVector{3, Float64}(x[b[c+dr]],y[b[c+dr]],z[b[c+dr]]),SVector{3, Float64}(x[b[c+r]],y[b[c+r]],z[b[c+r]])
+                if !is_degenerate(p0, p1, p2)
+                    push!(polygon, Plane(p0, p1, p2))
+                end
+                if !is_degenerate(p0, p3, p2)
+                    push!(polygon, Plane(p0, p3, p2))
+                end
             end
         end
     end
 
     return unique(canonical_points_key, polygon)
+end
+function is_degenerate(p0, p1, p2; atol=1e-10)
+    v1 = p1 - p0
+    v2 = p2 - p0
+    area = norm(cross(v1, v2)) / 2 
+    return area < atol
 end
 
 function create_rays!(point::CartesianIndex, rays, x, y, z, bottom_corner, top_corner)

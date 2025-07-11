@@ -19,9 +19,9 @@ function Ray(begin_point, end_point)
     return Ray(begin_point, end_point, direction)
 end
 
-struct ComponentMesh3D
+struct ComponentMesh3D{G}
     blank_mask::Array{Int8, 3}
-    grid::CurvilinearGrids.AbstractCurvilinearGrid3D
+    grid::G
     z_order::Int
     name::Union{String, Nothing}
     bounding_box::NTuple{6, Float64}
@@ -29,13 +29,13 @@ struct ComponentMesh3D
 end
 
 function create_components(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGrid3D}; centroids=true, check_overlap=true, resolution_type=:min)
-    meshes = Dict{Int, Vector{ComponentMesh3D}}()
+    meshes = Dict{Int, Vector{<:ComponentMesh3D}}()
     zs = determine_z_order(resolution_type, grids...)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = [ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
+            meshes[z] = [ComponentMesh3D{typeof(grid)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
         else
-            meshes[z] = [ComponentMesh3D(zeros(Int8, grid.nnodes[1]), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
+            meshes[z] = [ComponentMesh3D{typeof(grid)}(zeros(Int8, grid.nnodes[1]), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
         end
     end
 
@@ -48,13 +48,13 @@ function create_components(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGri
     return meshes
 end
 function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilinearGrid3D, String}}; centroids=true, check_overlap=true, resolution_type=:min)
-    meshes = Dict{Int, Vector{ComponentMesh3D}}()
+    meshes = Dict{Int, Vector{<:ComponentMesh3D}}()
     zs = determine_z_order(resolution_type, grids...)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = [ComponentMesh3D(zeros(Int8, (grid[1].nnodes[1]-1, grid[1].nnodes[2]-1, grid[1].nnodes[3]-1)), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
+            meshes[z] = [ComponentMesh3D{typeof(grid)}(zeros(Int8, (grid[1].nnodes[1]-1, grid[1].nnodes[2]-1, grid[1].nnodes[3]-1)), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
         else
-            meshes[z] = [ComponentMesh3D(zeros(Int8, grid[1].nnodes), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
+            meshes[z] = [ComponentMesh3D{typeof(grid)}(zeros(Int8, grid[1].nnodes), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
         end
     end
 
@@ -67,19 +67,19 @@ function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilin
     return meshes
 end
 function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilinearGrid3D, Int}}; centroids=true, check_overlap=true)
-    meshes = Dict{Int, Vector{ComponentMesh3D}}()
+    meshes = Dict{Int, Vector{<:ComponentMesh3D}}()
     for (grid, z) in grids
         if z in keys(meshes)
             if centroids
-                push!(meshes[z], ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid, z, nothing, get_boundary!(grid)...))
+                push!(meshes[z], ComponentMesh3D{typeof(grid)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid, z, nothing, get_boundary!(grid)...))
             else
-                push!(meshes[z], ComponentMesh3D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...))
+                push!(meshes[z], ComponentMesh3D{typeof(grid)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...))
             end
         else
             if centroids
-                meshes[z] = [ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid, z, nothing, get_boundary!(grid)...)]
+                meshes[z] = [ComponentMesh3D{typeof(grid)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid, z, nothing, get_boundary!(grid)...)]
             else
-                meshes[z] = [ComponentMesh3D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...)]
+                meshes[z] = [ComponentMesh3D{typeof(grid)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...)]
             end
         end
     end

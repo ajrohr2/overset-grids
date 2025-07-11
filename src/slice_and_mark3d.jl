@@ -1,4 +1,4 @@
-function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, centroids)
+function slicer!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, centroids)
     rays = Vector{Ray}(undef, 6)
     intersection_list = zeros(Int16, 6)
 
@@ -41,9 +41,18 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, centroids)
                         @inbounds for l in eachindex(rays)
                             for face in boundary_polygon
                                 if determine_intersection(face, rays[l])
+                                    if c_mj == CartesianIndex(17, 30, 20)
+                                        println("Face: $(face)")
+                                    end
                                     intersection_list[l] += 1
                                     # println("Ray $(rays[l]) intersected line $segment ")
                                 end
+                            end
+
+                            if c_mj == CartesianIndex(17, 30, 20)
+                                println("Ray: $(rays[l])")
+                                println(intersection_list)
+                                println("---")
                             end
 
                             if intersection_list[l] % 2 == 1 
@@ -67,7 +76,7 @@ end
 
 # Function to determine interpolation cells
 
-function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh3D}}, num_interp_cells::Int)
+function mark_interpolation_cells!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, num_interp_cells::Int)
     neighbors = ones(Int16, 6)
     for mesh_list in values(meshes)
         for mesh in mesh_list

@@ -72,7 +72,7 @@ function create_boundary_polygon(cartesian_indices, x_array, y_array)
     boundary3 = cartesian_indices[end,:]
     boundary4 = cartesian_indices[:,end]
 
-    polygon = []
+    polygon = Line[]
 
     for i in 1:length(boundary1)-1
         push!(polygon, Line((x_array[boundary1[i]], y_array[boundary1[i]]), (x_array[boundary1[i+1]], y_array[boundary1[i+1]])))

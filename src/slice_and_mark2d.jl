@@ -1,4 +1,4 @@
-function slicer!(meshes::Dict{Int, Vector{ComponentMesh2D}}, centroids)
+function slicer!(meshes::Dict{Int, Vector{<:ComponentMesh2D}}, centroids)
     rays = Vector{Line}(undef, 4)
     intersection_list = zeros(Int16, 4)
 
@@ -64,7 +64,7 @@ end
 
 # Function to remove interiors of sliced meshes. The idea is if you wrap meshes around an object, the background mesh doesn't need to simulate the area the object takes up. So we mark it for deletion.
 
-function slice_interior!(meshes::Dict{Int, Vector{ComponentMesh2D}})
+function slice_interior!(meshes::Dict{Int, Vector{<:ComponentMesh2D}})
     # Update to use rays rather than array slices
     for mesh in vcat(values(meshes)...)
         for point in CartesianIndices(mesh.blank_mask)
@@ -85,7 +85,7 @@ end
 
 # Function to determine interpolation cells
 
-function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh2D}}, num_interp_cells::Int)
+function mark_interpolation_cells!(meshes::Dict{Int, Vector{<:ComponentMesh2D}}, num_interp_cells::Int)
     neighbors = ones(Int16, 4)
     for mesh_list in values(meshes)
         for mesh in mesh_list

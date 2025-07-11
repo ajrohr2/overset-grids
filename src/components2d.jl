@@ -4,9 +4,9 @@ struct Line
     point_1::NTuple{2, Float64}
 end
 
-struct ComponentMesh2D
+struct ComponentMesh2D{G}
     blank_mask::Array{Int8, 2}
-    grid::CurvilinearGrids.AbstractCurvilinearGrid2D
+    grid::G
     z_order::Int
     name::Union{String, Nothing}
     bounding_box::NTuple{4, Float64}
@@ -29,13 +29,13 @@ If you don't know the z-order of the collection of meshes you have, the function
 Note: If you have two meshes with the same resolution, marking the `check_overlap` argument `true` will run overlap detection among all of the meshes on the same z-level. This can be computationally taxing, so if you are sure your equivalent-resolution meshes don't overlap, mark this `false`.
 """
 function create_components(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}; centroids=true, check_overlap=true, resolution_type=:min)
-    meshes = Dict{Int, Vector{ComponentMesh2D}}() 
+    meshes = Dict{Int, Vector{<:ComponentMesh2D}}() 
     zs = determine_z_order(resolution_type, grids...)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = [ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
+            meshes[z] = [ComponentMesh2D{typeof(grid)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
         else
-            meshes[z] = [ComponentMesh2D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
+            meshes[z] = [ComponentMesh2D{typeof(grid)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...) for grid in grid_list]
         end
     end
 
@@ -48,13 +48,13 @@ function create_components(grids::Vararg{CurvilinearGrids.AbstractCurvilinearGri
     return meshes
 end
 function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilinearGrid2D, String}}; centroids=true, check_overlap=true, resolution_type=:min)
-    meshes = Dict{Int, Vector{ComponentMesh2D}}() 
+    meshes = Dict{Int, Vector{<:ComponentMesh2D}}() 
     zs = determine_z_order(resolution_type, grids...)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = [ComponentMesh2D(zeros(Int8, (grid[1].nnodes[1]-1, grid[1].nnodes[2]-1)), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
+            meshes[z] = [ComponentMesh2D{typeof(grid)}(zeros(Int8, (grid[1].nnodes[1]-1, grid[1].nnodes[2]-1)), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
         else
-            meshes[z] = [ComponentMesh2D(zeros(Int8, grid[1].nnodes), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
+            meshes[z] = [ComponentMesh2D{typeof(grid)}(zeros(Int8, grid[1].nnodes), grid[1], z, grid[2], get_boundary!(grid[1])...) for grid in grid_list]
         end
     end
 
@@ -67,19 +67,19 @@ function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilin
     return meshes
 end
 function create_components(grids::Vararg{Tuple{CurvilinearGrids.AbstractCurvilinearGrid2D, Int}}; centroids=true, check_overlap=true)
-    meshes = Dict{Int, Vector{ComponentMesh2D}}() 
+    meshes = Dict{Int, Vector{<:ComponentMesh2D}}() 
     for (grid, z) in grids
         if z in keys(meshes)
             if centroids
-                push!(meshes[z], ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...))
+                push!(meshes[z], ComponentMesh2D{typeof(grid)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...))
             else
-                push!(meshes[z], ComponentMesh2D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...))
+                push!(meshes[z], ComponentMesh2D{typeof(grid)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...))
             end
         else
             if centroids
-                meshes[z] = [ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...)]
+                meshes[z] = [ComponentMesh2D{typeof(grid)}(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary!(grid)...)]
             else
-                meshes[z] = [ComponentMesh2D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...)]
+                meshes[z] = [ComponentMesh2D{typeof(grid)}(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary!(grid)...)]
             end
         end
     end
@@ -150,7 +150,7 @@ function determine_z_order(resolution_type, grids::Vararg{Tuple{CurvilinearGrids
 end
 
 # Check if two meshes of the same z-order overlap. If two exist, return an error.
-function check_illegal_meshes(meshes::Dict{Int, Vector{ComponentMesh2D}}, centroids)
+function check_illegal_meshes(meshes::Dict{Int, Vector{<:ComponentMesh2D}}, centroids)
     rays = Vector{Line}(undef, 4)
     intersection_list = zeros(Int16, 4)
 
