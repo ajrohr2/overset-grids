@@ -41,19 +41,18 @@ function slicer!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, centroids)
                         @inbounds for l in eachindex(rays)
                             for face in boundary_polygon
                                 if determine_intersection(face, rays[l])
-                                    if c_mj == CartesianIndex(17, 30, 20)
-                                        println("Face: $(face)")
-                                    end
+                                    # if c_mj == CartesianIndex(17, 30, 20)
+                                    #     println("Face: $(face)")
+                                    # end
                                     intersection_list[l] += 1
-                                    # println("Ray $(rays[l]) intersected line $segment ")
                                 end
                             end
 
-                            if c_mj == CartesianIndex(17, 30, 20)
-                                println("Ray: $(rays[l])")
-                                println(intersection_list)
-                                println("---")
-                            end
+                            # if c_mj == CartesianIndex(17, 30, 20)
+                            #     println("Ray: $(rays[l])")
+                            #     println(intersection_list)
+                            #     println("---")
+                            # end
 
                             if intersection_list[l] % 2 == 1 
                                 intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = intersection_list[5] = intersection_list[6] = 0
