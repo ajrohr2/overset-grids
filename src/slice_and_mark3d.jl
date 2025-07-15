@@ -1,13 +1,27 @@
-function slicer!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, centroids)
+function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid3D}}, centroids::Bool, mark_interior::Bool)
     rays = Vector{Ray}(undef, 6)
     intersection_list = zeros(Int16, 6)
+
+    # Maybe we can define this with the largest size possible.
+    maxlen = 0
+    for grid in grids
+        l = length(CurvilinearGrids.coords(grid)[1])
+        if l > maxlen
+            maxlen = l
+        end
+    end
+    overlap = Vector{CartesianIndex{3}}(undef, maxlen)
+    # interior = Vector{CartesianIndex{3}}(undef, maxlen)
+    if mark_interior
+        interior = Vector{CartesianIndex{3}}(undef, maxlen)
+    end
 
     @inbounds for i in keys(meshes)
         for mesh_i in meshes[i]
             @inbounds for j in (i+1):length(meshes)
                 for mesh_j in meshes[j]
                     # Mesh i should be cutting mesh j, meaning we need to find the CartesianIndices where mesh j will change
-                    grid_j = mesh_j.grid 
+                    grid_j = grids[mesh_j.grid_index]
 
                     boundary_polygon = mesh_i.boundary_polygon
 
@@ -27,9 +41,8 @@ function slicer!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, centroids)
                     largest_z = max(mesh_i.bounding_box[6], mesh_j.bounding_box[6])
                     smallest_z = min(mesh_i.bounding_box[5], mesh_j.bounding_box[5])
 
-                    # Pre-allocate arrays
-                    overlap = Vector{CartesianIndex}(undef, length(x_mj))
                     overlap_num = 0
+                    interior_num = 0
 
                     # Here is eventually where we want to implement spiral search
                     @inbounds for c_mj in CartesianIndices(size(x_mj))
@@ -61,11 +74,28 @@ function slicer!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, centroids)
                                 break
                             end
                         end
+
+                        # Experimentally mark interior cells in the main slicing loop
+                        if mark_interior && !any(==(0), intersection_list)
+                            intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = intersection_list[5] = intersection_list[6] = 0
+                            interior_num += 1
+                            interior[interior_num] = c_mj
+                        end
                     end
 
-                    # Update the iblank matrix
+                    # Update the blank matrix for overlap cells
                     @inbounds for c in 1:overlap_num
                         mesh_j.blank_mask[overlap[c]] = 1
+                    end
+                    # Update the blank matrix for interior cells
+                    # @inbounds for c in 1:interior_num
+                    #     mesh_j.blank_mask[interior[c]] = 2
+                    # end
+                    if mark_interior
+                        # Update the blank matrix for interior cells
+                        @inbounds for c in 1:interior_num
+                            mesh_j.blank_mask[interior[c]] = 2
+                        end
                     end
                 end
             end
@@ -75,45 +105,43 @@ end
 
 # Function to determine interpolation cells
 
-function mark_interpolation_cells!(meshes::Dict{Int, Vector{<:ComponentMesh3D}}, num_interp_cells::Int)
+"""
+    mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh3D}}, num_interp_cells::Int)
+
+Mark the first `num_interp_cells` border overlap cells as interpolation cells.
+
+If your grids have interior cells, this function is unlikely to work as expected unless you first call `slice_interior!`. To learn more about interior cells, see the docstring for `slice_interior!`.
+
+Interpolation cells are marked with a -1 in the `blank_mask` parameter of each mesh.
+"""
+function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh3D}}, num_interp_cells::Int)
     neighbors = ones(Int16, 6)
     for mesh_list in values(meshes)
         for mesh in mesh_list
-            interp_points = Vector{CartesianIndex}(undef, length(mesh.boundary_polygon)*num_interp_cells)
-            for point in CartesianIndices(mesh.blank_mask)
+            CI = CartesianIndices(mesh.blank_mask)
+            interp_points = Vector{CartesianIndex{3}}(undef, length(mesh.boundary_polygon)*num_interp_cells)
+            for point in CI
                 if mesh.blank_mask[point] == 1 
-                    try
+                    if point[1] > 1
                         neighbors[1] = mesh.blank_mask[point[1]-1, point[2], point[3]]
-                    catch e
-                        # pass
                     end
-                    try
+                    if point[1] < size(mesh.blank_mask)[1]
                         neighbors[2] = mesh.blank_mask[point[1]+1, point[2], point[3]]
-                    catch e
-                        # pass
                     end
-                    try
+                    if point[2] > 1
                         neighbors[3] = mesh.blank_mask[point[1], point[2]-1, point[3]]
-                    catch e
-                        # pass
                     end
-                    try
+                    if point[2] < size(mesh.blank_mask)[2]
                         neighbors[4] = mesh.blank_mask[point[1], point[2]+1, point[3]]
-                    catch e
-                        # pass
                     end
-                    try
+                    if point[3] > 1
                         neighbors[5] = mesh.blank_mask[point[1], point[2], point[3]-1]
-                    catch e
-                        # pass
                     end
-                    try
+                    if point[3] < size(mesh.blank_mask)[3]
                         neighbors[6] = mesh.blank_mask[point[1], point[2], point[3]+1]
-                    catch e
-                        # pass
                     end
 
-                    num_surrounding_zeros = count(x -> x == 0, neighbors)
+                    num_surrounding_zeros = count(==(0), neighbors)
                     if num_surrounding_zeros >= 1 
                         mesh.blank_mask[point] = -1 
                     end
@@ -123,40 +151,28 @@ function mark_interpolation_cells!(meshes::Dict{Int, Vector{<:ComponentMesh3D}},
             end
             for _ in 1:num_interp_cells-1
                 num_interp_points = 0
-                for point in CartesianIndices(mesh.blank_mask)
+                for point in CI
                     if mesh.blank_mask[point] == 1 
-                        try
+                        if point[1] > 1
                             neighbors[1] = mesh.blank_mask[point[1]-1, point[2], point[3]]
-                        catch e
-                            # pass
                         end
-                        try
+                        if point[1] < size(mesh.blank_mask)[1]
                             neighbors[2] = mesh.blank_mask[point[1]+1, point[2], point[3]]
-                        catch e
-                            # pass
                         end
-                        try
+                        if point[2] > 1
                             neighbors[3] = mesh.blank_mask[point[1], point[2]-1, point[3]]
-                        catch e
-                            # pass
                         end
-                        try
+                        if point[2] < size(mesh.blank_mask)[2]
                             neighbors[4] = mesh.blank_mask[point[1], point[2]+1, point[3]]
-                        catch e
-                            # pass
                         end
-                        try
+                        if point[3] > 1
                             neighbors[5] = mesh.blank_mask[point[1], point[2], point[3]-1]
-                        catch e
-                            # pass
                         end
-                        try
+                        if point[3] < size(mesh.blank_mask)[3]
                             neighbors[6] = mesh.blank_mask[point[1], point[2], point[3]+1]
-                        catch e
-                            # pass
                         end
 
-                        num_surrounding_interps = count(x -> x == -1, neighbors)
+                        num_surrounding_interps = count(==(-1), neighbors)
                         if num_surrounding_interps >= 1 
                             num_interp_points += 1
                             interp_points[num_interp_points] = point

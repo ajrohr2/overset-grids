@@ -16,6 +16,6 @@ include("intersection2d.jl")
 include("intersection3d.jl")
 include("slice_and_mark3d.jl")
 include("slice_and_mark2d.jl")
-export slice_interior!, mark_interpolation_cells!
+export mark_interpolation_cells!
 
 end

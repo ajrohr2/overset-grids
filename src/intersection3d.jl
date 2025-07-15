@@ -79,7 +79,7 @@ function is_degenerate(p0, p1, p2; atol=1e-10)
     return area < atol
 end
 
-function create_rays!(point::CartesianIndex, rays, x, y, z, bottom_corner, top_corner)
+function create_rays!(point::CartesianIndex, rays::Vector{Ray}, x, y, z, bottom_corner, top_corner)
     perturbation_x = abs(x[2] - x[1]) * ℯ / 100
     perturbation_y = abs(y[2] - y[1]) * ℯ / 100
     perturbation_z = abs(z[2] - z[1]) * ℯ / 100
