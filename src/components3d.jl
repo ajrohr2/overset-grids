@@ -54,9 +54,9 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, nothing, get_boundary!(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, nothing, get_boundary(grids[grid_index])...) for grid_index in grid_list]
         else
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes[1]), grid_index, z, nothing, get_boundary!(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes[1]), grid_index, z, nothing, get_boundary(grids[grid_index])...) for grid_index in grid_list]
         end
     end
 
@@ -77,9 +77,9 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, names[grid_index], get_boundary!(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, names[grid_index], get_boundary(grids[grid_index])...) for grid_index in grid_list]
         else
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, names[grid_index], get_boundary!(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, names[grid_index], get_boundary(grids[grid_index])...) for grid_index in grid_list]
         end
     end
 
@@ -102,15 +102,15 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         grid = grids[grid_index]
         if z in keys(meshes)
             if centroids
-                push!(meshes[z], ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary!(grid)...))
+                push!(meshes[z], ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary(grid)...))
             else
-                push!(meshes[z], ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary!(grid)...))
+                push!(meshes[z], ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)...))
             end
         else
             if centroids
-                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary!(grid)...)]
+                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary(grid)...)]
             else
-                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary!(grid)...)]
+                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)...)]
             end
         end
     end

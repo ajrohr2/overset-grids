@@ -60,7 +60,7 @@ function create_rays!(point::CartesianIndex, rays, x_array, y_array, bottom_corn
     rays[4] = Line((x_array[point], y_array[point]), (x_array[point[1], end]+perturbation_x, top_corner[2]))
 end
 
-function get_boundary!(grid::CurvilinearGrids.AbstractCurvilinearGrid2D)
+function get_boundary(grid::CurvilinearGrids.AbstractCurvilinearGrid2D)
     x, y = CurvilinearGrids.coords(grid)
     mi_inds = CartesianIndices((1:size(x,1), 1:size(x,2)))
     boundary_polygon = create_boundary_polygon(mi_inds, x, y)

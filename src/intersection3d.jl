@@ -41,7 +41,7 @@ function canonical_points_key(p::Plane)
     c = Tuple(norm_zeros(p.point_2))
     return sort(SVector(a,b,c))
 end
-function get_boundary!(grid::CurvilinearGrids.AbstractCurvilinearGrid3D)
+function get_boundary(grid::CurvilinearGrids.AbstractCurvilinearGrid3D)
     x, y, z = CurvilinearGrids.coords(grid)
     mi_inds = CartesianIndices(size(x))
     boundary_polygon = create_boundary_planes(mi_inds, x, y, z)
