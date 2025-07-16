@@ -1,5 +1,3 @@
-using OversetGrids, CurvilinearGrids, Test
-
 @testset "Orientation" begin
     A = (0, 0)
     B = (0, 1)

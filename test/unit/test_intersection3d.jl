@@ -1,5 +1,3 @@
-using OversetGrids, CurvilinearGrids, Test, StaticArrays
-
 @testset "Intersection" begin
     # Intersecting plane, inside triangle
     in_face = OversetGrids.Plane(SVector(0, -1, 0), SVector(1, 0, 0), SVector(0, 1, 0))

@@ -1,5 +1,3 @@
-using OversetGrids, CurvilinearGrids, Test
-
 @testset "Nested Half-Spheres" begin
     inner_half_sphere = rthetaphi_grid((0, 0, 0), (0.75, π, π), (20, 20, 20), :meg6)
     outer_half_sphere = rthetaphi_grid((0, 0, 0), (1, π, π), (20, 20, 20), :meg6)
