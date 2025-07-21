@@ -7,13 +7,13 @@
 
     meshes = create_components(grids, zs)
 
-    @test all(==(0), meshes[1][1].blank_mask)
+    @test all(==(0), meshes[1][1].component_mesh.blank_mask)
     
     correct_mask = ones(Int8, (20, 20, 20))
     correct_mask[11:15, :, :] .= -1
     correct_mask[16:end, :, :] .= 0
 
-    @test correct_mask == meshes[2][1].blank_mask
+    @test correct_mask == meshes[2][1].component_mesh.blank_mask
 end
 
 @testset "Nested Rectangles" begin
@@ -25,7 +25,7 @@ end
 
     meshes = create_components(grids, zs; num_interp_points = 3)
 
-    @test all(==(0), meshes[1][1].blank_mask)
+    @test all(==(0), meshes[1][1].component_mesh.blank_mask)
 
     correct_mask = zeros(Int8, (20, 30))
     correct_mask[6:15, 8:23] .= 1
@@ -36,5 +36,5 @@ end
         end
     end
 
-    @test meshes[2][1].blank_mask == correct_mask
+    @test meshes[2][1].component_mesh.blank_mask == correct_mask
 end

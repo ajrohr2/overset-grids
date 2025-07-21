@@ -5,6 +5,9 @@ using WriteVTK
 using LinearAlgebra
 using StaticArrays
 
+include("types.jl")
+include("helper_functions.jl")
+
 include("components2d.jl")
 include("components3d.jl")
 export create_components

@@ -1,18 +1,3 @@
-# Helper struct for intersection detections
-struct Line
-    point_0::NTuple{2, Float64}
-    point_1::NTuple{2, Float64}
-end
-
-struct ComponentMesh2D
-    blank_mask::Array{Int8, 2}
-    grid_index::Int
-    z_order::Int
-    name::Union{String, Nothing}
-    bounding_box::NTuple{4, Float64}
-    boundary_polygon::Vector{Line}
-end
-
 """
     create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}; centroids=true, check_overlap=true, mark_interpolation=true, num_interp_points=5, mark_interior=true, resolution_type=:min)
     create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}, names::Tuple{Vararg{String}}; centroids=true, check_overlap=true, mark_interpolation=true, num_interp_points=5, mark_interior=true, resolution_type=:min)
@@ -55,7 +40,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    return meshes
+    return reassociate(meshes, grids)
 end
 function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}, names::Tuple{Vararg{String}}; centroids=true, check_overlap=true, mark_interpolation=true, num_interp_points=5, mark_interior=true, resolution_type=:min)
     meshes = Dict{Int, Vector{ComponentMesh2D}}() 
@@ -78,7 +63,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    return meshes
+    return reassociate(meshes, grids)
 end
 function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}, z_orders::Tuple{Vararg{Int}}; centroids=true, mark_interpolation=true, num_interp_points=5, mark_interior=true, check_overlap=true)
     meshes = Dict{Int, Vector{ComponentMesh2D}}() 
@@ -110,7 +95,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    return meshes
+    return reassociate(meshes, grids)
 end
 
 # --- Helper functions --- #
