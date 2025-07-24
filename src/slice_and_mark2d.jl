@@ -160,3 +160,73 @@ function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh2D}}, n
         end
     end
 end
+
+function mark_background_interpolation!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}, centroids::Bool; num_interp_points=5)
+    rays = Vector{Line}(undef, 4)
+    intersection_list = zeros(Int16, 4)
+
+    dict_keys = sort(collect(keys(meshes)))
+
+    maxlen = 0
+    for grid in grids
+        l = length(CurvilinearGrids.coords(grid)[1])
+        if l > maxlen
+            maxlen = l
+        end
+    end
+    overlap = Vector{CartesianIndex{2}}(undef, maxlen * 2)
+
+    @inbounds for i in dict_keys
+        for marked_mesh in meshes[i]
+            marked_grid = grids[marked_mesh.grid_index]
+            if centroids
+                x_mj, y_mj = CurvilinearGrids.centroids(marked_grid)
+            else
+                x_mj, y_mj = CurvilinearGrids.coords(marked_grid)
+            end
+            @inbounds for j in (i+1):length(meshes)
+                for marking_mesh in meshes[j]
+                    boundary_polygon = marking_mesh.boundary_polygon
+
+                    # Need to find a bounding box for the combined grids
+                    largest_x = max(marked_mesh.bounding_box[2], marking_mesh.bounding_box[2])
+                    smallest_x = min(marked_mesh.bounding_box[1], marking_mesh.bounding_box[1])
+                    
+                    largest_y = max(marked_mesh.bounding_box[4], marking_mesh.bounding_box[4])
+                    smallest_y = min(marked_mesh.bounding_box[3], marking_mesh.bounding_box[3])
+
+                    overlap_num = 0
+                    for interp_point in CartesianIndices(marked_mesh.blank_mask)
+                        if (interp_point[1] > num_interp_points && interp_point[2] > num_interp_points && interp_point[1] < size(marked_mesh.blank_mask)[1] - (num_interp_points - 1) && interp_point[2] < size(marked_mesh.blank_mask)[2] - (num_interp_points - 1)) || (marked_mesh.blank_mask[interp_point] == -1)
+                            continue
+                        end
+
+                        if x_mj[interp_point] < marking_mesh.bounding_box[1] || x_mj[interp_point] > marking_mesh.bounding_box[2] || y_mj[interp_point] < marking_mesh.bounding_box[3] || y_mj[interp_point] > marking_mesh.bounding_box[4]
+                            continue
+                        end
+                        create_rays!(interp_point, rays, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
+
+                        @inbounds for l in eachindex(rays)
+                            for segment in boundary_polygon
+                                if determine_intersection(rays[l], segment)
+                                    intersection_list[l] += 1
+                                    # println("Ray $(rays[l]) intersected line $segment ")
+                                end
+                            end
+
+                            if intersection_list[l] % 2 == 1 
+                                intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = 0
+                                overlap_num += 1
+                                overlap[overlap_num] = interp_point
+                                break
+                            end
+                        end
+                    end
+                    for k in 1:overlap_num
+                        marked_mesh.blank_mask[overlap[k]] = -1
+                    end
+                end
+            end
+        end
+    end
+end
