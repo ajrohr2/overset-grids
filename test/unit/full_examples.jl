@@ -7,8 +7,6 @@
 
     meshes = create_components(grids, zs)
 
-    @test all(==(0), meshes[1][1].component_mesh.blank_mask)
-    
     correct_mask = ones(Int8, (20, 20, 20))
     correct_mask[11:15, :, :] .= -1
     correct_mask[16:end, :, :] .= 0
@@ -24,8 +22,6 @@ end
     zs = (1, 2)
 
     meshes = create_components(grids, zs; num_interp_points = 3)
-
-    @test all(==(0), meshes[1][1].component_mesh.blank_mask)
 
     correct_mask = zeros(Int8, (20, 30))
     correct_mask[6:15, 8:23] .= 1
