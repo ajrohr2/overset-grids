@@ -65,7 +65,7 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg
 
                         # Experimentally mark interior cells in the main slicing loop
                         if mark_interior && !any(==(0), intersection_list)
-                            intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = intersection_list[5] = intersection_list[6] = 0
+                            intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = 0
                             interior_num += 1
                             interior[interior_num] = c_mj
                         end
