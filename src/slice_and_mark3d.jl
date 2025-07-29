@@ -11,7 +11,6 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg
         end
     end
     overlap = Vector{CartesianIndex{3}}(undef, maxlen)
-    # interior = Vector{CartesianIndex{3}}(undef, maxlen)
     if mark_interior
         interior = Vector{CartesianIndex{3}}(undef, maxlen)
     end
@@ -44,7 +43,6 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg
                     overlap_num = 0
                     interior_num = 0
 
-                    # Here is eventually where we want to implement spiral search
                     @inbounds for c_mj in CartesianIndices(size(x_mj))
                         if x_mj[c_mj] < mesh_i.bounding_box[1] || x_mj[c_mj] > mesh_i.bounding_box[2] || y_mj[c_mj] < mesh_i.bounding_box[3] || y_mj[c_mj] > mesh_i.bounding_box[4] || z_mj[c_mj] < mesh_i.bounding_box[5] || z_mj[c_mj] > mesh_i.bounding_box[6]
                             continue
@@ -54,18 +52,9 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg
                         @inbounds for l in eachindex(rays)
                             for face in boundary_polygon
                                 if determine_intersection(face, rays[l])
-                                    # if c_mj == CartesianIndex(17, 30, 20)
-                                    #     println("Face: $(face)")
-                                    # end
                                     intersection_list[l] += 1
                                 end
                             end
-
-                            # if c_mj == CartesianIndex(17, 30, 20)
-                            #     println("Ray: $(rays[l])")
-                            #     println(intersection_list)
-                            #     println("---")
-                            # end
 
                             if intersection_list[l] % 2 == 1 
                                 intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = intersection_list[5] = intersection_list[6] = 0
@@ -183,6 +172,79 @@ function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh3D}}, n
                 end
                 for c in 1:num_interp_points
                     mesh.blank_mask[interp_points[c]] = -1
+                end
+            end
+        end
+    end
+end
+
+function mark_background_interpolation!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid3D}}, centroids::Bool; num_interp_points=5)
+    rays = Vector{Ray}(undef, 6)
+    intersection_list = zeros(Int16, 6)
+
+    dict_keys = sort(collect(keys(meshes)))
+
+    maxlen = 0
+    for grid in grids
+        l = length(CurvilinearGrids.coords(grid)[1])
+        if l > maxlen
+            maxlen = l
+        end
+    end
+    overlap = Vector{CartesianIndex{3}}(undef, maxlen * 2)
+
+    @inbounds for i in dict_keys
+        for marked_mesh in meshes[i]
+            marked_grid = grids[marked_mesh.grid_index]
+            if centroids
+                x_mj, y_mj, z_mj = CurvilinearGrids.centroids(marked_grid)
+            else
+                x_mj, y_mj, z_mj = CurvilinearGrids.coords(marked_grid)
+            end
+            @inbounds for j in (i+1):length(meshes)
+                for marking_mesh in meshes[j]
+                    boundary_polygon = marking_mesh.boundary_polygon
+
+                    # Need to find a bounding box for the combined grids
+                    largest_x = max(marked_mesh.bounding_box[2], marking_mesh.bounding_box[2])
+                    smallest_x = min(marked_mesh.bounding_box[1], marking_mesh.bounding_box[1])
+                    
+                    largest_y = max(marked_mesh.bounding_box[4], marking_mesh.bounding_box[4])
+                    smallest_y = min(marked_mesh.bounding_box[3], marking_mesh.bounding_box[3])
+
+                    largest_z = max(marked_mesh.bounding_box[6], marking_mesh.bounding_box[6])
+                    smallest_z = min(marked_mesh.bounding_box[5], marking_mesh.bounding_box[5])
+
+                    overlap_num = 0
+                    for interp_point in CartesianIndices(marked_mesh.blank_mask)
+                        if (interp_point[1] > num_interp_points && interp_point[2] > num_interp_points && interp_point[3] > num_interp_points && interp_point[1] < size(marked_mesh.blank_mask)[1] - (num_interp_points - 1) && interp_point[2] < size(marked_mesh.blank_mask)[2] - (num_interp_points - 1) && interp_point[3] < size(marked_mesh.blank_mask)[3] - (num_interp_points - 1)) || (marked_mesh.blank_mask[interp_point] == -1)
+                            continue
+                        end
+
+                        if x_mj[interp_point] < marking_mesh.bounding_box[1] || x_mj[interp_point] > marking_mesh.bounding_box[2] || y_mj[interp_point] < marking_mesh.bounding_box[3] || y_mj[interp_point] > marking_mesh.bounding_box[4] || z_mj[interp_point] < marking_mesh.bounding_box[5] || z_mj[interp_point] > marking_mesh.bounding_box[6]
+                            continue
+                        end
+                        create_rays!(interp_point, rays, x_mj, y_mj, z_mj, (smallest_x, smallest_y, smallest_z), (largest_x, largest_y, largest_z))
+
+                        @inbounds for l in eachindex(rays)
+                            for face in boundary_polygon
+                                if determine_intersection(face, rays[l])
+                                    intersection_list[l] += 1
+                                    # println("Ray $(rays[l]) intersected line $segment ")
+                                end
+                            end
+
+                            if intersection_list[l] % 2 == 1 
+                                intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = intersection_list[5] = intersection_list[6] = 0
+                                overlap_num += 1
+                                overlap[overlap_num] = interp_point
+                                break
+                            end
+                        end
+                    end
+                    for k in 1:overlap_num
+                        marked_mesh.blank_mask[overlap[k]] = -1
+                    end
                 end
             end
         end

@@ -23,6 +23,6 @@ include("slice_and_mark2d.jl")
 export mark_interpolation_cells!
 
 include("interpolation.jl")
-export interpolate_to_grid!, error_estimate
+export interpolate_to_grid2d!, interpolate_to_grid3d!, error_estimate
 
 end

@@ -40,6 +40,8 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
+    mark_background_interpolation!(meshes, grids, centroids, num_interp_points=num_interp_points)
+
     return reassociate(meshes, grids)
 end
 function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid3D}}, names::Tuple{Vararg{String}}; centroids=true, check_overlap=true, mark_interpolation=true, num_interp_points=5, mark_interior=true, resolution_type=:min)
@@ -62,6 +64,8 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     if mark_interpolation
         mark_interpolation_cells!(meshes, num_interp_points)
     end
+
+    mark_background_interpolation!(meshes, grids, centroids, num_interp_points=num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -94,6 +98,8 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     if mark_interpolation
         mark_interpolation_cells!(meshes, num_interp_points)
     end
+
+    mark_background_interpolation!(meshes, grids, centroids, num_interp_points=num_interp_points)
 
     return reassociate(meshes, grids)
 end
