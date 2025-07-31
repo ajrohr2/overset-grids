@@ -86,21 +86,21 @@ function create_rays!(point::CartesianIndex, rays::Vector{Ray}, x, y, z, bottom_
 
     begin_point = SVector{3, Float64}(x[point], y[point], z[point])
 
-    end_point = SVector{3, Float64}(bottom_corner[1]+perturbation_x, begin_point[2], begin_point[3])
+    end_point = SVector{3, Float64}(bottom_corner[1]+perturbation_x, begin_point[2]+perturbation_y, begin_point[3]+perturbation_z)
     rays[1] = Ray(begin_point, end_point)
 
-    end_point = SVector{3, Float64}(top_corner[1]+perturbation_x, begin_point[2], begin_point[3])
+    end_point = SVector{3, Float64}(top_corner[1]+perturbation_x, begin_point[2]+perturbation_y, begin_point[3]+perturbation_z)
     rays[2] = Ray(begin_point, end_point)
 
-    end_point = SVector{3, Float64}(begin_point[1], bottom_corner[1]+perturbation_y, begin_point[3])
+    end_point = SVector{3, Float64}(begin_point[1]+perturbation_x, bottom_corner[1]+perturbation_y, begin_point[3]+perturbation_z)
     rays[3] = Ray(begin_point, end_point)
 
-    end_point = SVector{3, Float64}(begin_point[1], top_corner[1]+perturbation_y, begin_point[3])
+    end_point = SVector{3, Float64}(begin_point[1]+perturbation_x, top_corner[1]+perturbation_y, begin_point[3]+perturbation_z)
     rays[4] = Ray(begin_point, end_point)
 
-    end_point = SVector{3, Float64}(begin_point[1], begin_point[2], bottom_corner[3]+perturbation_z)
+    end_point = SVector{3, Float64}(begin_point[1]+perturbation_x, begin_point[2]+perturbation_y, bottom_corner[3]+perturbation_z)
     rays[5] = Ray(begin_point, end_point)
 
-    end_point = SVector{3, Float64}(begin_point[1], begin_point[2], top_corner[3]+perturbation_z)
+    end_point = SVector{3, Float64}(begin_point[1]+perturbation_x, begin_point[2]+perturbation_y, top_corner[3]+perturbation_z)
     rays[6] = Ray(begin_point, end_point)
 end

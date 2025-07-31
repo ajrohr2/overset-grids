@@ -300,11 +300,7 @@ function interpolate_to_grid2d!(
     coords_y_grid1 = grid1.grid.centroid_coordinates.y[grid1.grid.iterators.cell.domain]
     coords_x_grid2 = grid2.grid.centroid_coordinates.x[grid2.grid.iterators.cell.domain]
     coords_y_grid2 = grid2.grid.centroid_coordinates.y[grid2.grid.iterators.cell.domain]
-    pts = Vector{SVector{2, Float64}}(undef, length(coords_x_grid1))
-    @inbounds for idx in 1:size(pts, 1)
-        pts[idx] = SVector(coords_x_grid1[idx], coords_y_grid1[idx])
-    end
-    kdtree = KDTree(pts)
+    kdtree = grid1.component_mesh.kdtree
 
     # Pre-allocations for the eight_node_quadratic
     ξη = zeros(Float64, 2)
@@ -426,11 +422,7 @@ function interpolate_to_grid3d!(
         coords_y_grid2 = grid2.grid.centroid_coordinates.y[grid2.grid.iterators.cell.domain]
         coords_z_grid2 = grid2.grid.centroid_coordinates.z[grid2.grid.iterators.cell.domain]
     end
-    pts = Vector{SVector{3, Float64}}(undef, length(coords_x_grid1))
-    @inbounds for idx in 1:size(pts, 1)
-        pts[idx] = SVector(coords_x_grid1[idx], coords_y_grid1[idx], coords_z_grid1[idx])
-    end
-    kdtree = KDTree(pts)
+    kdtree = grid1.component_mesh.kdtree
 
     # Pre-allocations for the 27-node-triquadratic
     ξηζ = zeros(Float64, 3)

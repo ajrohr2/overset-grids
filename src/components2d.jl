@@ -24,9 +24,9 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1)), grid_index, z, nothing, get_boundary(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1)), grid_index, z, nothing, get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
         else
-            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, nothing, get_boundary(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, nothing, get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
         end
     end
 
@@ -40,7 +40,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    mark_background_interpolation!(meshes, grids, centroids, num_interp_points=num_interp_points)
+    mark_background_interpolation!(meshes, grids, centroids, num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -49,9 +49,9 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1)), grid_index, z, names[grid_index], get_boundary(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1)), grid_index, z, names[grid_index], get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
         else
-            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, names[grid_index], get_boundary(grids[grid_index])...) for grid_index in grid_list]
+            meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, names[grid_index], get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
         end
     end
 
@@ -65,7 +65,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    mark_background_interpolation!(meshes, grids, centroids, num_interp_points=num_interp_points)
+    mark_background_interpolation!(meshes, grids, centroids, num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -76,15 +76,15 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         grid = grids[grid_index]
         if z in keys(meshes)
             if centroids
-                push!(meshes[z], ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary(grid)...))
+                push!(meshes[z], ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid, z, nothing, get_boundary(grid)..., generate_kdtree(grid)))
             else
-                push!(meshes[z], ComponentMesh2D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary(grid)...))
+                push!(meshes[z], ComponentMesh2D(zeros(Int8, grid.nnodes), grid, z, nothing, get_boundary(grid)..., generate_kdtree(grid)))
             end
         else
             if centroids
-                meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid_index, z, nothing, get_boundary(grid)...)]
+                meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1)), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid))]
             else
-                meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)...)]
+                meshes[z] = ComponentMesh2D[ComponentMesh2D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid))]
             end
         end
     end
@@ -99,7 +99,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    mark_background_interpolation!(meshes, grids, centroids, num_interp_points=num_interp_points)
+    mark_background_interpolation!(meshes, grids, centroids, num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -191,3 +191,13 @@ function check_illegal_meshes(meshes::Dict{Int, Vector{ComponentMesh2D}}, centro
         end 
     end 
 end 
+
+function generate_kdtree(grid::CurvilinearGrids.AbstractCurvilinearGrid2D)
+    coords_x = grid.centroid_coordinates.x[grid.iterators.cell.domain]
+    coords_y = grid.centroid_coordinates.y[grid.iterators.cell.domain]
+    pts = Vector{SVector{2, Float64}}(undef, length(coords_x))
+    @inbounds for idx in 1:size(pts, 1)
+        pts[idx] = SVector(coords_x[idx], coords_y[idx])
+    end
+    return KDTree(pts)
+end

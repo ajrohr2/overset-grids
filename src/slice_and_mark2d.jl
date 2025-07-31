@@ -51,7 +51,6 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg
                             for segment in boundary_polygon
                                 if determine_intersection(rays[l], segment)
                                     intersection_list[l] += 1
-                                    # println("Ray $(rays[l]) intersected line $segment ")
                                 end
                             end
 
@@ -161,21 +160,12 @@ function mark_interpolation_cells!(meshes::Dict{Int, Vector{ComponentMesh2D}}, n
     end
 end
 
-function mark_background_interpolation!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}, centroids::Bool; num_interp_points=5)
-    rays = Vector{Line}(undef, 4)
-    intersection_list = zeros(Int16, 4)
-
+function mark_background_interpolation!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid2D}}, centroids::Bool, num_interp_points::Int64)
     dict_keys = sort(collect(keys(meshes)))
-
-    maxlen = 0
-    for grid in grids
-        l = length(CurvilinearGrids.coords(grid)[1])
-        if l > maxlen
-            maxlen = l
-        end
-    end
-    overlap = Vector{CartesianIndex{2}}(undef, maxlen * 2)
-
+    nodes = Vector{CartesianIndex{2}}(undef, 8)
+    point = Vector{Float64}(undef, 2)
+    idxs = Vector{Int}(undef, 1)
+    dists = Vector{Float64}(undef, 1)
     @inbounds for i in dict_keys
         for marked_mesh in meshes[i]
             marked_grid = grids[marked_mesh.grid_index]
@@ -186,16 +176,7 @@ function mark_background_interpolation!(meshes::Dict{Int, Vector{ComponentMesh2D
             end
             @inbounds for j in (i+1):length(meshes)
                 for marking_mesh in meshes[j]
-                    boundary_polygon = marking_mesh.boundary_polygon
-
-                    # Need to find a bounding box for the combined grids
-                    largest_x = max(marked_mesh.bounding_box[2], marking_mesh.bounding_box[2])
-                    smallest_x = min(marked_mesh.bounding_box[1], marking_mesh.bounding_box[1])
-                    
-                    largest_y = max(marked_mesh.bounding_box[4], marking_mesh.bounding_box[4])
-                    smallest_y = min(marked_mesh.bounding_box[3], marking_mesh.bounding_box[3])
-
-                    overlap_num = 0
+                    cis = CartesianIndices(marking_mesh.blank_mask)
                     for interp_point in CartesianIndices(marked_mesh.blank_mask)
                         if (interp_point[1] > num_interp_points && interp_point[2] > num_interp_points && interp_point[1] < size(marked_mesh.blank_mask)[1] - (num_interp_points - 1) && interp_point[2] < size(marked_mesh.blank_mask)[2] - (num_interp_points - 1)) || (marked_mesh.blank_mask[interp_point] == -1)
                             continue
@@ -204,29 +185,118 @@ function mark_background_interpolation!(meshes::Dict{Int, Vector{ComponentMesh2D
                         if x_mj[interp_point] < marking_mesh.bounding_box[1] || x_mj[interp_point] > marking_mesh.bounding_box[2] || y_mj[interp_point] < marking_mesh.bounding_box[3] || y_mj[interp_point] > marking_mesh.bounding_box[4]
                             continue
                         end
-                        create_rays!(interp_point, rays, x_mj, y_mj, (smallest_x, smallest_y), (largest_x, largest_y))
 
-                        @inbounds for l in eachindex(rays)
-                            for segment in boundary_polygon
-                                if determine_intersection(rays[l], segment)
-                                    intersection_list[l] += 1
-                                    # println("Ray $(rays[l]) intersected line $segment ")
-                                end
-                            end
+                        point[1] = x_mj[interp_point]
+                        point[2] = y_mj[interp_point]
 
-                            if intersection_list[l] % 2 == 1 
-                                intersection_list[1] = intersection_list[2] = intersection_list[3] = intersection_list[4] = 0
-                                overlap_num += 1
-                                overlap[overlap_num] = interp_point
-                                break
+                        extract_patch_marking!(point, cis, marking_mesh.kdtree, nodes, idxs, dists)
+
+                        num_ones = 0
+                        @inbounds for c in nodes
+                            if marking_mesh.blank_mask[c] == 1 
+                                num_ones += 1
                             end
                         end
-                    end
-                    for k in 1:overlap_num
-                        marked_mesh.blank_mask[overlap[k]] = -1
+                        if num_ones == 0
+                            marked_mesh.blank_mask[interp_point] = -1
+                        end
                     end
                 end
             end
+        end
+    end
+end
+function extract_patch_marking!(point, cis, kdtree, nodes, idxs, dists)
+    # First find the closest point in Euclidean space. This uses a KDTree approach
+    knn!(idxs, dists, kdtree, point, 1)
+    i, j = cis[idxs[1]].I # This is the "center point" of the patch we want
+
+    @inbounds if i == 1 
+        if j == 1
+            nodes[1] = CartesianIndex(i, j)
+            nodes[2] = CartesianIndex(i+2, j)
+            nodes[3] = CartesianIndex(i+2, j+2)
+            nodes[4] = CartesianIndex(i, j+2)
+            nodes[5] = CartesianIndex(i+1, j)
+            nodes[6] = CartesianIndex(i+1, j+1)
+            nodes[7] = CartesianIndex(i+1, j+2)
+            nodes[8] = CartesianIndex(i, j+1)
+        elseif j == size(cis)[2]
+            nodes[1] = CartesianIndex(i, j-2)
+            nodes[2] = CartesianIndex(i+2, j-2)
+            nodes[3] = CartesianIndex(i+2, j)
+            nodes[4] = CartesianIndex(i, j)
+            nodes[5] = CartesianIndex(i+1, j-2)
+            nodes[6] = CartesianIndex(i+2, j-1)
+            nodes[7] = CartesianIndex(i+1, j)
+            nodes[8] = CartesianIndex(i, j-1)
+        else
+            nodes[1] = CartesianIndex(i, j-1)
+            nodes[2] = CartesianIndex(i+2, j-1)
+            nodes[3] = CartesianIndex(i+2, j+1)
+            nodes[4] = CartesianIndex(i, j+1)
+            nodes[5] = CartesianIndex(i+1, j-1)
+            nodes[6] = CartesianIndex(i+1, j)
+            nodes[7] = CartesianIndex(i+1, j+1)
+            nodes[8] = CartesianIndex(i, j)
+        end
+    elseif i == size(cis)[1]
+        if j == 1
+            nodes[1] = CartesianIndex(i-2, j)
+            nodes[2] = CartesianIndex(i, j)
+            nodes[3] = CartesianIndex(i, j+2)
+            nodes[4] = CartesianIndex(i-2, j+2)
+            nodes[5] = CartesianIndex(i-1, j)
+            nodes[6] = CartesianIndex(i, j+1)
+            nodes[7] = CartesianIndex(i-1, j+2)
+            nodes[8] = CartesianIndex(i, j+1)
+        elseif j == size(cis)[2]
+            nodes[1] = CartesianIndex(i-2, j-2)
+            nodes[2] = CartesianIndex(i, j-2)
+            nodes[3] = CartesianIndex(i, j)
+            nodes[4] = CartesianIndex(i-2, j)
+            nodes[5] = CartesianIndex(i-1, j-2)
+            nodes[6] = CartesianIndex(i, j-1)
+            nodes[7] = CartesianIndex(i-1, j)
+            nodes[8] = CartesianIndex(i-2, j-1)
+        else
+            nodes[1] = CartesianIndex(i-2, j-1)
+            nodes[2] = CartesianIndex(i, j-1)
+            nodes[3] = CartesianIndex(i, j+1)
+            nodes[4] = CartesianIndex(i-2, j+1)
+            nodes[5] = CartesianIndex(i-1, j-1)
+            nodes[6] = CartesianIndex(i, j)
+            nodes[7] = CartesianIndex(i-1, j+1)
+            nodes[8] = CartesianIndex(i-2, j)
+        end
+    else
+        if j == 1
+            nodes[1] = CartesianIndex(i-1, j)
+            nodes[2] = CartesianIndex(i+1, j)
+            nodes[3] = CartesianIndex(i+1, j+2)
+            nodes[4] = CartesianIndex(i-1, j+2)
+            nodes[5] = CartesianIndex(i, j)
+            nodes[6] = CartesianIndex(i+1, j+1)
+            nodes[7] = CartesianIndex(i, j+2)
+            nodes[8] = CartesianIndex(i-1, j+1)
+        elseif j == size(cis)[2]
+            nodes[1] = CartesianIndex(i-1, j-2)
+            nodes[2] = CartesianIndex(i+1, j-2)
+            nodes[3] = CartesianIndex(i+1, j)
+            nodes[4] = CartesianIndex(i-1, j)
+            nodes[5] = CartesianIndex(i, j-2)
+            nodes[6] = CartesianIndex(i+1, j-1)
+            nodes[7] = CartesianIndex(i, j)
+            nodes[8] = CartesianIndex(i-1, j-1)
+        else
+            nodes[1] = CartesianIndex(i-1, j-1)
+            nodes[2] = CartesianIndex(i+1, j-1)
+            nodes[3] = CartesianIndex(i+1, j+1)
+            nodes[4] = CartesianIndex(i-1, j+1)
+            nodes[5] = CartesianIndex(i, j-1)
+            nodes[6] = CartesianIndex(i+1, j)
+            nodes[7] = CartesianIndex(i, j+1)
+            nodes[8] = CartesianIndex(i-1, j)
         end
     end
 end

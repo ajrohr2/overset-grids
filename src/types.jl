@@ -12,6 +12,7 @@ struct ComponentMesh2D <: ComponentMesh
     name::Union{String, Nothing}
     bounding_box::NTuple{4, Float64}
     boundary_polygon::Vector{Line}
+    kdtree::NearestNeighbors.KDTree{SVector{2, Float64}, Euclidean, Float64, SVector{2, Float64}}
 end
 
 struct Plane
@@ -40,4 +41,5 @@ struct ComponentMesh3D <: ComponentMesh
     name::Union{String, Nothing}
     bounding_box::NTuple{6, Float64}
     boundary_polygon::Vector{Plane}
+    kdtree::NearestNeighbors.KDTree{SVector{3, Float64}, Euclidean, Float64, SVector{3, Float64}}
 end
