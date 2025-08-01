@@ -53,14 +53,7 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg
                             for face in boundary_polygon
                                 if determine_intersection(face, rays[l])
                                     intersection_list[l] += 1
-                                    if l == 6 && c_mj == CartesianIndex(30, 30, 13) 
-                                        println(face)
-                                        println(rays[l])
-                                    end
                                 end
-                            end
-                            if c_mj == CartesianIndex(30, 30, 13)
-                                println(intersection_list)
                             end
 
                             if intersection_list[l] % 2 == 1 
@@ -83,10 +76,6 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh3D}}, grids::Tuple{Vararg
                     @inbounds for c in 1:overlap_num
                         mesh_j.blank_mask[overlap[c]] = 1
                     end
-                    # Update the blank matrix for interior cells
-                    # @inbounds for c in 1:interior_num
-                    #     mesh_j.blank_mask[interior[c]] = 2
-                    # end
                     if mark_interior
                         # Update the blank matrix for interior cells
                         @inbounds for c in 1:interior_num

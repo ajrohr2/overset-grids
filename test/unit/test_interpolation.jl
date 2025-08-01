@@ -18,7 +18,11 @@
 
     interpolate_to_grid2d!(meshes[2][1], meshes[1][1], F_square, F_circle)
     error_matrix = error_estimate.(F_circle_exact, F_circle)
-    error_matrix[CartesianIndices((6:200-5, 6:200-5))] .= 0.0 
+    @inbounds for i in eachindex(meshes[1][1].component_mesh.blank_mask)
+        if meshes[1][1].component_mesh.blank_mask[i] != -1
+            error_matrix[i] = 0.0 
+        end
+    end
 
     @test maximum(error_matrix) ≤ 1e-5
 end
@@ -42,7 +46,11 @@ end
 
     interpolate_to_grid3d!(meshes[2][1], meshes[1][1], F_square, F_circle)
     error_matrix = error_estimate.(F_circle_exact, F_circle)
-    error_matrix[CartesianIndices((6:50-5, 6:50-5, 6:50-5))] .= 0.0 
+    @inbounds for i in eachindex(meshes[1][1].component_mesh.blank_mask)
+        if meshes[1][1].component_mesh.blank_mask[i] != -1
+            error_matrix[i] = 0.0 
+        end
+    end
 
     # This error looks bad, but it's a result of the grid resolution
     @test maximum(error_matrix) ≤ 5e-4
