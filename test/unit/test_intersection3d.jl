@@ -1,21 +1,24 @@
 @testset "Intersection" begin
     # Intersecting plane, inside triangle
     in_face = OversetGrids.Plane(SVector(0, -1, 0), SVector(1, 0, 0), SVector(0, 1, 0))
-    in_ray = OversetGrids.Ray(SVector(0.5, 0, -1), SVector(0.5, 0, 1))
+    in_ray_origin = SVector(0.5, 0, -1)
+    in_ray_dir = SVector(0, 0, 1)
 
-    @test OversetGrids.determine_intersection(in_face, in_ray) == true
+    @test OversetGrids.determine_intersection(in_face, in_ray_origin, in_ray_dir) == true
 
     # Intersecting plane, outside triangle
     out_face = OversetGrids.Plane(SVector(0, -1, 0), SVector(1, 0, 0), SVector(0, 1, 0))
-    out_ray = OversetGrids.Ray(SVector(2, -1, 0), SVector(2, 1, 0))
+    out_ray_origin = SVector(2, -1, 0)
+    out_ray_dir = SVector(0.4472135954999579, 0.8944271909999159, 0.0)
     
-    @test OversetGrids.determine_intersection(out_face, out_ray) == false
+    @test OversetGrids.determine_intersection(out_face, out_ray_origin, out_ray_dir) == false
 
     # Ray and plane colinear
     col_face = OversetGrids.Plane(SVector(0, -1, 0), SVector(1, 0, 0), SVector(0, 1, 0))
-    col_ray = OversetGrids.Ray(SVector(1, 0, 0), SVector(2, 0, 0))
+    col_ray_origin = SVector(1, 0, 0)
+    col_ray_dir = SVector(1, 0, 0)
 
-    @test OversetGrids.determine_intersection(col_face, col_ray) == false
+    @test OversetGrids.determine_intersection(col_face, col_ray_origin, col_ray_dir) == false
 end
 
 @testset "Boundary Creation" begin
