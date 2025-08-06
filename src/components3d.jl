@@ -24,15 +24,15 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, nothing, get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, nothing, get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index]), CurvilinearGrids.centroids(grids[grid_index])...) for grid_index in grid_list]
         else
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes[1]), grid_index, z, nothing, get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes[1]), grid_index, z, nothing, get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index]), CurvilinearGrids.coords(grids[grid_index])...) for grid_index in grid_list]
         end
     end
 
-    if check_overlap
-        check_illegal_meshes(meshes, centroids, grids)
-    end
+    # if check_overlap
+    #     check_illegal_meshes(meshes, centroids, grids)
+    # end
 
     slicer!(meshes, grids, centroids, mark_interior)
 
@@ -40,7 +40,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    mark_background_interpolation!(meshes, grids, centroids, num_interp_points)
+    mark_background_interpolation!(meshes, num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -49,15 +49,15 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
     zs = determine_z_order(resolution_type, grids)
     for (z, grid_list) in zs
         if centroids
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, names[grid_index], get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grids[grid_index].nnodes[1]-1, grids[grid_index].nnodes[2]-1, grids[grid_index].nnodes[3]-1)), grid_index, z, names[grid_index], get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index]), CurvilinearGrids.centroids(grids[grid_index])...) for grid_index in grid_list]
         else
-            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, names[grid_index], get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index])) for grid_index in grid_list]
+            meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grids[grid_index].nnodes), grid_index, z, names[grid_index], get_boundary(grids[grid_index])..., generate_kdtree(grids[grid_index]), CurvilinearGrids.coords(grids[grid_index])...) for grid_index in grid_list]
         end
     end
 
-    if check_overlap
-        check_illegal_meshes(meshes, centroids, grids)
-    end
+    # if check_overlap
+    #     check_illegal_meshes(meshes, centroids, grids)
+    # end
 
     slicer!(meshes, grids, centroids, mark_interior)
 
@@ -65,7 +65,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    mark_background_interpolation!(meshes, grids, centroids, num_interp_points)
+    mark_background_interpolation!(meshes, num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -76,22 +76,22 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         grid = grids[grid_index]
         if z in keys(meshes)
             if centroids
-                push!(meshes[z], ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid)))
+                push!(meshes[z], ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid), CurvilinearGrids.centroids(grid)...))
             else
-                push!(meshes[z], ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid)))
+                push!(meshes[z], ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid), CurvilinearGrids.coords(grid)...))
             end
         else
             if centroids
-                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid))]
+                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, (grid.nnodes[1]-1, grid.nnodes[2]-1, grid.nnodes[3]-1)), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid), CurvilinearGrids.centroids(grid)...)]
             else
-                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid))]
+                meshes[z] = ComponentMesh3D[ComponentMesh3D(zeros(Int8, grid.nnodes), grid_index, z, nothing, get_boundary(grid)..., generate_kdtree(grid), CurvilinearGrids.coords(grid)...)]
             end
         end
     end
 
-    if check_overlap
-        check_illegal_meshes(meshes, centroids, grids)
-    end
+    # if check_overlap
+    #     check_illegal_meshes(meshes, centroids, grids)
+    # end
 
     slicer!(meshes, grids, centroids, mark_interior)
 
@@ -99,7 +99,7 @@ function create_components(grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilin
         mark_interpolation_cells!(meshes, num_interp_points)
     end
 
-    mark_background_interpolation!(meshes, grids, centroids, num_interp_points)
+    mark_background_interpolation!(meshes, num_interp_points)
 
     return reassociate(meshes, grids)
 end
@@ -134,66 +134,66 @@ function determine_z_order(resolution_type::Symbol, grids::Tuple{Vararg{Curvilin
 end
 
 # Check if two meshes of the same z-order overlap. If two exist, return an error.
-function check_illegal_meshes(meshes::Dict{Int, Vector{ComponentMesh3D}}, centroids::Bool, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid3D}})
-    rays = Vector{Ray}(undef, 6)
-    intersection_list = zeros(Int16, 6)
-
-    for (z, z_level) in meshes
-        for mesh_i in z_level
-            for mesh_j in setdiff(z_level, [mesh_i])
-                
-                grid_j = grids[mesh_j.grid_index]
-
-                boundary_polygon = mesh_i.boundary_polygon
-
-                if centroids
-                    x_mj, y_mj, z_mj = CurvilinearGrids.centroids(grid_j)
-                else
-                    x_mj, y_mj, z_mj = CurvilinearGrids.coords(grid_j)
-                end
-
-                # Need to find a bounding box for the combined grids
-                largest_x = max(mesh_i.bounding_box[2], mesh_j.bounding_box[2])
-                smallest_x = min(mesh_i.bounding_box[1], mesh_j.bounding_box[1])
-                
-                largest_y = max(mesh_i.bounding_box[4], mesh_j.bounding_box[4])
-                smallest_y = min(mesh_i.bounding_box[3], mesh_j.bounding_box[3])
-
-                largest_z = max(mesh_i.bounding_box[6], mesh_j.bounding_box[6])
-                smallest_z = min(mesh_i.bounding_box[5], mesh_j.bounding_box[5])
-
-                # Here is eventually where we want to implement spiral search
-                for c_mj in CartesianIndices(size(x_mj))
-                    if x_mj[c_mj] < mesh_i.bounding_box[1] || x_mj[c_mj] > mesh_i.bounding_box[2] || y_mj[c_mj] < mesh_i.bounding_box[3] || y_mj[c_mj] > mesh_i.bounding_box[4] || z_mj[c_mj] < mesh_i.bounding_box[5] || z_mj[c_mj] > mesh_i.bounding_box[6]
-                        continue
-                    end
-                    create_rays!(c_mj, rays, x_mj, y_mj, z_mj, (smallest_x, smallest_y, smallest_z), (largest_x, largest_y, largest_z))
-
-                    @inbounds for l in eachindex(rays)
-                        for segment in boundary_polygon
-                            if determine_intersection(rays[l], segment)
-                                intersection_list[l] += 1
-                                # println("Ray $(rays[l]) intersected line $segment ")
-                            end
-                        end
-
-                        if intersection_list[l] % 2 == 1 
-                            if mesh_i.name != ""
-                                error("Two equivalent z-order meshes overlap! Check the meshes $(mesh_i.name), $(mesh_j.name) in z-order $(z).")
-                            else
-                                error("Two equivalent z-order meshes overlap!")
-                            end
-                        end
-
-                        for i in eachindex(intersection_list)
-                            intersection_list[i] = 0 
-                        end
-                    end
-                end
-            end 
-        end 
-    end 
-end 
+# function check_illegal_meshes(meshes::Dict{Int, Vector{ComponentMesh3D}}, centroids::Bool, grids::Tuple{Vararg{CurvilinearGrids.AbstractCurvilinearGrid3D}})
+#     rays = Vector{Ray}(undef, 6)
+#     intersection_list = zeros(Int16, 6)
+# 
+#     for (z, z_level) in meshes
+#         for mesh_i in z_level
+#             for mesh_j in setdiff(z_level, [mesh_i])
+#                 
+#                 grid_j = grids[mesh_j.grid_index]
+# 
+#                 boundary_polygon = mesh_i.boundary_polygon
+# 
+#                 if centroids
+#                     x_mj, y_mj, z_mj = CurvilinearGrids.centroids(grid_j)
+#                 else
+#                     x_mj, y_mj, z_mj = CurvilinearGrids.coords(grid_j)
+#                 end
+# 
+#                 # Need to find a bounding box for the combined grids
+#                 largest_x = max(mesh_i.bounding_box[2], mesh_j.bounding_box[2])
+#                 smallest_x = min(mesh_i.bounding_box[1], mesh_j.bounding_box[1])
+#                 
+#                 largest_y = max(mesh_i.bounding_box[4], mesh_j.bounding_box[4])
+#                 smallest_y = min(mesh_i.bounding_box[3], mesh_j.bounding_box[3])
+# 
+#                 largest_z = max(mesh_i.bounding_box[6], mesh_j.bounding_box[6])
+#                 smallest_z = min(mesh_i.bounding_box[5], mesh_j.bounding_box[5])
+# 
+#                 # Here is eventually where we want to implement spiral search
+#                 for c_mj in CartesianIndices(size(x_mj))
+#                     if x_mj[c_mj] < mesh_i.bounding_box[1] || x_mj[c_mj] > mesh_i.bounding_box[2] || y_mj[c_mj] < mesh_i.bounding_box[3] || y_mj[c_mj] > mesh_i.bounding_box[4] || z_mj[c_mj] < mesh_i.bounding_box[5] || z_mj[c_mj] > mesh_i.bounding_box[6]
+#                         continue
+#                     end
+#                     create_rays!(c_mj, rays, x_mj, y_mj, z_mj, (smallest_x, smallest_y, smallest_z), (largest_x, largest_y, largest_z))
+# 
+#                     @inbounds for l in eachindex(rays)
+#                         for segment in boundary_polygon
+#                             if determine_intersection(rays[l], segment)
+#                                 intersection_list[l] += 1
+#                                 # println("Ray $(rays[l]) intersected line $segment ")
+#                             end
+#                         end
+# 
+#                         if intersection_list[l] % 2 == 1 
+#                             if mesh_i.name != ""
+#                                 error("Two equivalent z-order meshes overlap! Check the meshes $(mesh_i.name), $(mesh_j.name) in z-order $(z).")
+#                             else
+#                                 error("Two equivalent z-order meshes overlap!")
+#                             end
+#                         end
+# 
+#                         for i in eachindex(intersection_list)
+#                             intersection_list[i] = 0 
+#                         end
+#                     end
+#                 end
+#             end 
+#         end 
+#     end 
+# end 
 function generate_kdtree(grid::CurvilinearGrids.AbstractCurvilinearGrid3D)
     coords_x = grid.centroid_coordinates.x[grid.iterators.cell.domain]
     coords_y = grid.centroid_coordinates.y[grid.iterators.cell.domain]

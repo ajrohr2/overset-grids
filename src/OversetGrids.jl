@@ -5,9 +5,11 @@ using WriteVTK
 using LinearAlgebra
 using StaticArrays
 using NearestNeighbors
+using ImplicitBVH
 
 include("types.jl")
 include("helper_functions.jl")
+include("in_place_ray_traverse.jl")
 
 include("components2d.jl")
 include("components3d.jl")

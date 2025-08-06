@@ -27,12 +27,7 @@ function Plane(point_0, point_1, point_2)
 end
 struct Ray
     begin_point::SVector{3, Float64}
-    end_point::SVector{3, Float64}
     direction::SVector{3, Float64}
-end
-function Ray(begin_point, end_point)
-    direction = normalize(end_point .- begin_point)
-    return Ray(begin_point, end_point, direction)
 end
 struct ComponentMesh3D <: ComponentMesh
     blank_mask::Array{Int8, 3}
@@ -41,5 +36,9 @@ struct ComponentMesh3D <: ComponentMesh
     name::Union{String, Nothing}
     bounding_box::NTuple{6, Float64}
     boundary_polygon::Vector{Plane}
+    bvh::ImplicitBVH.BVH{Int32, Vector{ImplicitBVH.BBox{Float64}}, Vector{ImplicitBVH.BBox{Float64}}, Vector{UInt32}, Vector{Int32}}
     kdtree::NearestNeighbors.KDTree{SVector{3, Float64}, Euclidean, Float64, SVector{3, Float64}}
+    x::SubArray{Float64, 3, Array{Float64, 3}, Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, false}
+    y::SubArray{Float64, 3, Array{Float64, 3}, Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, false}
+    z::SubArray{Float64, 3, Array{Float64, 3}, Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}, false}
 end
