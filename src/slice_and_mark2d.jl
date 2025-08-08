@@ -51,14 +51,7 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg
                             for segment in boundary_polygon
                                 if determine_intersection(rays[l], segment)
                                     intersection_list[l] += 1
-                                    if c_mj == CartesianIndex(15, 122)
-                                        @show segment
-                                        @show rays[l]
-                                    end
                                 end
-                            end
-                            if c_mj == CartesianIndex(15, 122)
-                                @show intersection_list
                             end
 
                             if intersection_list[l] % 2 == 1 
