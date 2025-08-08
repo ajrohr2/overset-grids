@@ -30,11 +30,11 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg
                     end
 
                     # Need to find a bounding box for the combined grids
-                    largest_x = max(mesh_i.bounding_box[2], mesh_j.bounding_box[2])
-                    smallest_x = min(mesh_i.bounding_box[1], mesh_j.bounding_box[1])
+                    largest_x = max(mesh_i.bounding_box[2], mesh_j.bounding_box[2])*1.2
+                    smallest_x = min(mesh_i.bounding_box[1], mesh_j.bounding_box[1])*1.2
                     
-                    largest_y = max(mesh_i.bounding_box[4], mesh_j.bounding_box[4])
-                    smallest_y = min(mesh_i.bounding_box[3], mesh_j.bounding_box[3])
+                    largest_y = max(mesh_i.bounding_box[4], mesh_j.bounding_box[4])*1.2
+                    smallest_y = min(mesh_i.bounding_box[3], mesh_j.bounding_box[3])*1.2
 
                     # Pre-allocate arrays
                     overlap_num = 0
@@ -51,7 +51,14 @@ function slicer!(meshes::Dict{Int, Vector{ComponentMesh2D}}, grids::Tuple{Vararg
                             for segment in boundary_polygon
                                 if determine_intersection(rays[l], segment)
                                     intersection_list[l] += 1
+                                    if c_mj == CartesianIndex(15, 122)
+                                        @show segment
+                                        @show rays[l]
+                                    end
                                 end
+                            end
+                            if c_mj == CartesianIndex(15, 122)
+                                @show intersection_list
                             end
 
                             if intersection_list[l] % 2 == 1 
